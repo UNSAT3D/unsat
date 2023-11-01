@@ -8,7 +8,7 @@ def tif_to_numpy(tif_file):
         tif_file: path to the tif image
     
     Returns:
-        A numpy array
+        A three-dimensional numpy array
     """
     images = []
     with Image.open(tif_file) as img:
@@ -24,3 +24,25 @@ def tif_to_numpy(tif_file):
 
     images = np.array(images)
     return images
+
+def slicer(array, index, axis=0):
+    """Slice the array along the main axes
+    
+    Args:
+        array: a numpy array
+        index: the position of the slice
+        axis: the axis of the slice (0 for horizontal, 1 and 2 for vertical)
+
+    Returns:
+        A two-dimensional numpy array
+    """
+    if axis == 0:
+        sliced = array[index, :, :]
+    elif axis == 1:
+        sliced = array[:, index, :]
+    elif axis == 2:
+        sliced = array[:, :, index]
+    else:
+        raise ValueError("axis must be 0, 1 or 2")
+
+    return sliced
