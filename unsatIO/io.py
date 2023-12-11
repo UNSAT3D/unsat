@@ -1,12 +1,13 @@
 from PIL import Image
 import numpy as np
 
+
 def tif_to_numpy(tif_file):
     """Loads a tif image as a numpy array
-    
+
     Args:
         tif_file: path to the tif image
-    
+
     Returns:
         A three-dimensional numpy array
     """
@@ -25,9 +26,10 @@ def tif_to_numpy(tif_file):
     images = np.array(images)
     return images
 
+
 def slicer(array, index, axis=0):
     """Slice the array along the main axes
-    
+
     Args:
         array: a numpy array
         index: the position of the slice
