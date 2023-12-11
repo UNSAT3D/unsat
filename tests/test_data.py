@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import pytest
 
-from data import XRayDataset
+from data import DataSelection, XRayDataset
 
 DAYS = 4
 HEIGHT = 20
@@ -31,17 +31,16 @@ def remove_test_h5(create_test_h5):
     os.remove(create_test_h5)
 
 
-def test_data(create_test_h5, remove_test_h5):
+def test_dataset(create_test_h5, remove_test_h5):
     (height_start, height_end) = (5, 10)
     (day_start, day_end) = (1, 3)
     sample_list = ['coarse/loose/04', 'fine/dense/07']
-    dataset = XRayDataset(
-        hdf5_path=create_test_h5,
+    selection = DataSelection(
+        sample_list=sample_list,
         height_range=(height_start, height_end),
         day_range=(day_start, day_end),
-        sample_list=sample_list,
-        name='test',
     )
+    dataset = XRayDataset(hdf5_path=create_test_h5, data_selection=selection, name='test')
 
     # test shapes
     assert len(dataset) == len(sample_list) * (height_end - height_start) * (day_end - day_start)
