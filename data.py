@@ -10,13 +10,26 @@ from torch.utils.data import Dataset
 
 
 class XRayDataset(Dataset):
+    """
+    Dataset representing a selection of the total data (train/validation/test split)
+
+    Args:
+        hdf5_path: path to hdf5 file containing all data
+        height_range: range of height indices to include in dataset
+        day_range: range of day indices to include in dataset
+        sample_list: list of samples to include in dataset
+        name: name of dataset (train/validation/test)
+    """
+
     def __init__(
         self,
         hdf5_path: str,
         height_range: Tuple[int, int],
         day_range: Tuple[int, int],
         sample_list: List[str],
+        name: str,
     ):
+        self.name = name
         self.hdf5_path = hdf5_path
 
         self.sample_list = sample_list
@@ -38,23 +51,11 @@ class XRayDataset(Dataset):
         height_idx = self.height_range[0] + (data_idx % self.heights)
 
         with h5py.File(self.hdf5_path, 'r') as hdf5_file:
-            data = hdf5_file[self.sample_list[sample_idx]]['data'][day_idx, height_idx]
+            data = hdf5_file[self.sample_list[sample_idx]]['data']
+            data = data[day_idx, height_idx]
             labels = hdf5_file[self.sample_list[sample_idx]]['labels'][day_idx, height_idx]
 
             data = torch.from_numpy(data)
             labels = torch.from_numpy(labels)
 
             return data, labels
-
-
-def main():
-    tst = XRayDataset(
-        '../data/data.h5', (1_000, 1_100), (2, 5), ['coarse/loose/04', 'fine/dense/07']
-    )
-
-    print(len(tst))
-    print(tst[0][0].shape, tst[0][1].shape)
-
-
-if __name__ == '__main__':
-    main()
