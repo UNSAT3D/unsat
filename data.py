@@ -58,7 +58,7 @@ class XRayDataset(Dataset):
 
     def __init__(self, hdf5_path: str, data_selection: DataSelection, name: str):
         self.name = name
-        self.hdf5_path = hdf5_path
+        self.hdf5_file = h5py.File(hdf5_path, 'r')
         self.selection = data_selection
 
     def __len__(self):
@@ -71,17 +71,16 @@ class XRayDataset(Dataset):
         day_idx += self.selection.day_range[0]
         height_idx += self.selection.height_range[0]
 
-        with h5py.File(self.hdf5_path, 'r') as hdf5_file:
-            data = hdf5_file[self.selection.sample_list[sample_idx]]['data']
-            data = data[day_idx, height_idx]
-            labels = hdf5_file[self.selection.sample_list[sample_idx]]['labels'][
-                day_idx, height_idx
-            ]
+        data = self.hdf5_file[self.selection.sample_list[sample_idx]]['data']
+        data = data[day_idx, height_idx]
+        labels = self.hdf5_file[self.selection.sample_list[sample_idx]]['labels'][
+            day_idx, height_idx
+        ]
 
-            data = torch.from_numpy(data)
-            labels = torch.from_numpy(labels)
+        data = torch.from_numpy(data)
+        labels = torch.from_numpy(labels)
 
-            return data, labels
+        return data, labels
 
 
 def create_dataloaders(
@@ -178,7 +177,7 @@ def create_dataloaders(
     dataloaders = {}
     for name, dataset in datasets.items():
         dataloaders[name] = torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size, shuffle=(name == 'train'), num_workers=4
+            dataset, batch_size=batch_size, shuffle=(name == 'train')
         )
 
     return dataloaders

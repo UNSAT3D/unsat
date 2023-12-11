@@ -86,7 +86,7 @@ def test_dataloaders(create_test_h5, remove_test_h5):
     for name, loader in dataloaders.items():
         elements[name] = set()
         for data, _ in loader:
-            elements[name].add(data.numpy().tostring())
+            elements[name].add(data.numpy().tobytes())
 
     for set1, set2 in itertools.product(dataloaders.keys(), repeat=2):
         if set1 == set2:
