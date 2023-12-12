@@ -77,8 +77,8 @@ class XRayDataset(Dataset):
             day_idx, height_idx
         ]
 
-        data = torch.from_numpy(data)
-        labels = torch.from_numpy(labels)
+        data = torch.from_numpy(data).type(torch.float32)
+        labels = torch.from_numpy(labels).type(torch.long)
 
         return data, labels
 
