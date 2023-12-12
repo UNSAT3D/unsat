@@ -1,6 +1,6 @@
 name: Install and test Python package
 
-on: [push, pull_request]
+on: push
 
 jobs:
   
