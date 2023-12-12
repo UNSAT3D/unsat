@@ -4,3 +4,11 @@ __pycache__/
 # Test coverage files
 .coverage
 coverage.xml
+
+# Mac
+.DS_Store
+
+# Logs
+lightning_logs/
+wandb/
+
