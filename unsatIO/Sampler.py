@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-import matplotlib.pyplot as plt
+
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+
 
 class Sampler(ABC):
-
     def __init__(self, array):
         self.array = array
 
@@ -19,7 +20,7 @@ class Sampler(ABC):
     @abstractmethod
     def plot(self):
         """Plot the sampler's shape on top of the array
-        
+
         This is useful for visually checking that the sample is correct.
         """
         pass
@@ -31,8 +32,8 @@ class Sampler(ABC):
         """
         pass
 
-class RectangularSampler(Sampler):
 
+class RectangularSampler(Sampler):
     def __init__(self, array2D, loc, size):
         super().__init__(array2D)
         self.loc = loc
@@ -47,9 +48,10 @@ class RectangularSampler(Sampler):
         return [self.loc[0], self.loc[0] + self.size[0]]
 
     def sample(self):
-        return self.array[self.loc[0]:self.loc[0]+self.size[0], 
-                          self.loc[1]:self.loc[1]+self.size[1]]
-    
+        return self.array[
+            self.loc[0] : self.loc[0] + self.size[0], self.loc[1] : self.loc[1] + self.size[1]
+        ]
+
     def plot(self, linewidth=1, edgecolor='r', *args, **kwargs):
         _, ax = plt.subplots()
         ax.imshow(self.array, *args, **kwargs)
@@ -57,17 +59,26 @@ class RectangularSampler(Sampler):
         # This is due to to the notation:
         # [0] = row = vertical,
         # [1] = col = horizontal
-        rect = patches.Rectangle((self.loc[1], self.loc[0]), width=self.size[1], height=self.size[0], linewidth=linewidth, edgecolor=edgecolor, facecolor='none')
+        rect = patches.Rectangle(
+            (self.loc[1], self.loc[0]),
+            width=self.size[1],
+            height=self.size[0],
+            linewidth=linewidth,
+            edgecolor=edgecolor,
+            facecolor='none',
+        )
         ax.add_patch(rect)
 
     def is_out(self):
-        return max(self.horizontal_bounds) > self.shape[1] or \
-               max(self.vertical_bounds) > self.shape[0] or \
-               min(self.horizontal_bounds) < 0 or \
-               min(self.vertical_bounds) < 0
+        return (
+            max(self.horizontal_bounds) > self.shape[1]
+            or max(self.vertical_bounds) > self.shape[0]
+            or min(self.horizontal_bounds) < 0
+            or min(self.vertical_bounds) < 0
+        )
+
 
 class ParallelepipedalSampler(Sampler):
-
     def sample(self):
         pass
 
