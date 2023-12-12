@@ -48,3 +48,16 @@ def slicer(array, index, axis=0):
         raise ValueError("axis must be 0, 1 or 2")
 
     return sliced
+
+
+def center(array):
+    """Returns the coordinates of the center of an array"""
+    s = array.shape
+    return list(np.floor(coord / 2) for coord in s)
+
+
+def radius(circular_slice):
+    """Estimates the radius (in pixels) of a circular slice"""
+    c = center(circular_slice)
+    s = circular_slice.shape
+    return s[0] - c[0]
