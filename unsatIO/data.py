@@ -80,6 +80,10 @@ class XRayDataset(Dataset):
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
 
+        # find the non-infinite maximum, and replace infinities with that
+        max_val = torch.max(data[torch.isfinite(data)])
+        data[torch.isinf(data)] = max_val
+
         return data, labels
 
 
