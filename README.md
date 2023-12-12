@@ -1,3 +1,6 @@
+![Python package](https://github.com/UNSAT3D/unsatIO/workflows/Install%20and%20test%20Python%20package/badge.svg)
+[![codecov](https://codecov.io/gh/UNSAT3D/unsatIO/graph/badge.svg)](https://codecov.io/gh/UNSAT3D/unsatIO)
+
 # Input/Output tools for UNSAT
 
 ## Installation
