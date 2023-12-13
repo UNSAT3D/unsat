@@ -14,7 +14,7 @@ dataloaders = create_dataloaders(
     batch_size=8,
 )
 
-model = UltraLocalModel(input_size=1, hidden_sizes=[16, 32, 32], output_size=5)
+model = UltraLocalModel(input_size=1, hidden_sizes=[16, 16], output_size=5)
 
 
 class LTest(L.LightningModule):
@@ -24,8 +24,6 @@ class LTest(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        # labels shouldn't have the channels dimension
-        y = torch.reshape(y, y.shape[:-1])
         y_hat = self.model(x)
         y_hat = torch.reshape(y_hat, (-1, 5))
         y = torch.reshape(y, (-1,))
@@ -35,7 +33,7 @@ class LTest(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        return torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
 
 model_L = LTest(model)
