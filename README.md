@@ -1,5 +1,5 @@
-[![Python package](https://github.com/UNSAT3D/unsatIO/workflows/Install%20and%20test%20Python%20package/badge.svg)](https://github.com/UNSAT3D/unsatIO/actions/workflows/python.yaml)
-[![codecov](https://codecov.io/gh/UNSAT3D/unsatIO/graph/badge.svg)](https://codecov.io/gh/UNSAT3D/unsatIO)
+[![Python package](https://github.com/UNSAT3D/unsat/workflows/Install%20and%20test%20Python%20package/badge.svg)](https://github.com/UNSAT3D/unsat/actions/workflows/python.yaml)
+[![codecov](https://codecov.io/gh/UNSAT3D/unsat/graph/badge.svg)](https://codecov.io/gh/UNSAT3D/unsat)
 
 # Input/Output tools for UNSAT
 

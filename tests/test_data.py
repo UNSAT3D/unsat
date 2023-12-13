@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 import pytest
 
-from unsatIO.data import DataSelection, XRayDataset, create_dataloaders
+from unsat.data import DataSelection, XRayDataset, create_dataloaders
 
 DAYS = 4
 HEIGHT = 20

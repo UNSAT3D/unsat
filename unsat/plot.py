@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from unsatIO.io import slicer
+from unsat.io import slicer
 
 
 def plot_slice(array, index=1, axis=0, *args, **kwargs):
