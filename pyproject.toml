@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "unsatIO"
+name = "unsat"
 version = "0.1.0"
 description = ""
 authors = ["Pablo Rodríguez Sánchez <pablo.rodriguez.sanchez@gmail.com>"]
