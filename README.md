@@ -1,7 +1,7 @@
 [![Python package](https://github.com/UNSAT3D/unsat/workflows/Install%20and%20test%20Python%20package/badge.svg)](https://github.com/UNSAT3D/unsat/actions/workflows/python.yaml)
 [![codecov](https://codecov.io/gh/UNSAT3D/unsat/graph/badge.svg)](https://codecov.io/gh/UNSAT3D/unsat)
 
-# Input/Output tools for UNSAT
+# UNSAT
 
 ## Installation
 
@@ -12,6 +12,27 @@
 
 Your working environment can be activated via `poetry shell`.
 More information on poetry available [here](https://python-poetry.org/).
+
+### Weights and biases
+
+We use weights and biases to track our experiments. 
+Make sure this is set up first.
+
+## Usage
+
+Once installed, from the project folder run
+
+```bash
+python unsat/main.py -c configs/test_config.yaml
+```
+
+This does a short training run and uploads the results to weights and biases.
+In the terminal you should see a link to the run.
+
+To do more useful runs, look at other config files or modify it yourself.
+All configuration settings should be in the config file rather than the code itself.
+
+## Contributing
 
 ### Linter
 
