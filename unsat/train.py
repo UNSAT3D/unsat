@@ -1,29 +1,25 @@
-from data import create_dataloaders
 import lightning as L
+from lightning.pytorch.cli import SaveConfigCallback
 from lightning.pytorch.loggers import WandbLogger
 from models import UltraLocalModel
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy
 
-dataloaders = create_dataloaders(
-    hdf5_path='../../data/data.h5',
-    train_samples=['maize/coarse/loose', 'maize/fine/dense'],
-    height_range=(800, 1_200),
-    train_day_range=(0, 3),
-    validation_split=0.1,
-    batch_size=8,
-)
-
-model = UltraLocalModel(input_size=1, hidden_sizes=[16, 16], output_size=5)
+MODEL_CLASSES = {"ultra_local": UltraLocalModel}
 
 
-class LTest(L.LightningModule):
-    def __init__(self, model):
+class LightningTrainer(L.LightningModule):
+    def __init__(self, model_class: str, model_kwargs: dict, **kwargs):
+        """
+        Hello world!
+        """
         super().__init__()
-        self.model = model
 
         self.num_classes = 5
+        self.model = MODEL_CLASSES[model_class](
+            **model_kwargs, input_size=1, output_size=self.num_classes
+        )
 
         self.train_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
         self.val_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
@@ -59,12 +55,3 @@ class LTest(L.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-1)
-
-
-model_L = LTest(model)
-logger = WandbLogger(project="local-model")
-
-trainer = L.Trainer(
-    log_every_n_steps=1, accelerator='cpu', logger=logger, val_check_interval=3, max_epochs=4
-)
-trainer.fit(model_L, dataloaders['train'], dataloaders['val'])
