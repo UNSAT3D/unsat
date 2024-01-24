@@ -55,3 +55,23 @@ class LightningTrainer(L.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-1)
+
+
+class WandbSaveConfigCallback(SaveConfigCallback):
+    """
+    Custom callback to save the lightning config to wandb.
+    """
+
+    def save_config(self, trainer: L.Trainer, pl_module: L.LightningModule, stage: str):
+        logger = trainer.logger
+        save_dir = logger.experiment.dir
+        print("save dir:", save_dir)
+        config_path = f"{save_dir}/{self.config_filename}"
+        self.parser.save(
+            self.config,
+            config_path,
+            skip_none=False,
+            overwrite=self.overwrite,
+            multifile=self.multifile,
+        )
+        logger.experiment.config['lightning_config'] = self.config

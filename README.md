@@ -28,6 +28,7 @@ python unsat/main.py -c configs/test_config.yaml
 
 This does a short training run and uploads the results to weights and biases.
 In the terminal you should see a link to the run.
+The config used will be saved to weights and biases too as `lightning_config.yaml``.
 
 To do more useful runs, look at other config files or modify it yourself.
 All configuration settings should be in the config file rather than the code itself.
