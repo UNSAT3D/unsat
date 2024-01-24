@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 import pytest
 
-from unsat.data import DataSelection, XRayDataset, create_dataloaders
+from unsat.data import DataSelection, XRayDataModule, XRayDataset
 
 DAYS = 4
 HEIGHT = 20
@@ -65,7 +65,7 @@ def test_dataloaders(create_test_h5, remove_test_h5):
     (height_start, height_end) = (5, 10)
     (day_start, day_end) = (0, 3)
     sample_list = ['coarse/loose/04']
-    dataloaders = create_dataloaders(
+    data_module = XRayDataModule(
         hdf5_path=create_test_h5,
         train_samples=sample_list,
         height_range=(height_start, height_end),
@@ -73,6 +73,8 @@ def test_dataloaders(create_test_h5, remove_test_h5):
         validation_split=0.2,
         batch_size=1,
     )
+    data_module.prepare_data()
+    dataloaders = data_module.dataloaders
 
     # test shapes
     for name, loader in dataloaders.items():
