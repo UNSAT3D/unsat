@@ -23,7 +23,7 @@ Make sure this is set up first.
 Once installed, from the project folder run
 
 ```bash
-python unsat/main.py -c configs/test_config.yaml
+python unsat/main.py fit -c configs/test_config.yaml
 ```
 
 This does a short training run and uploads the results to weights and biases.
