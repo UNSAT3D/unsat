@@ -12,6 +12,10 @@ HEIGHT = 20
 WIDTH = 3
 DEPTH = 3
 CHANNELS = 1
+
+BATCH_SIZE = 3
+VAL_SPLIT = 0.4
+
 SAMPLES = ['coarse/loose/04', 'fine/dense/07']
 
 
@@ -70,16 +74,17 @@ def test_dataloaders(create_test_h5, remove_test_h5):
         train_samples=sample_list,
         height_range=(height_start, height_end),
         train_day_range=(day_start, day_end),
-        validation_split=0.2,
-        batch_size=1,
+        validation_split=VAL_SPLIT,
+        batch_size=BATCH_SIZE,
     )
     data_module.prepare_data()
     dataloaders = data_module.dataloaders
 
     # test shapes
     for name, loader in dataloaders.items():
-        assert loader.dataset[0][0].shape == (WIDTH, DEPTH, CHANNELS)
-        assert loader.dataset[0][1].shape == (WIDTH, DEPTH, CHANNELS)
+        x, y = next(iter(loader))
+        assert x.shape == (BATCH_SIZE, WIDTH, DEPTH, CHANNELS)
+        assert y.shape == (BATCH_SIZE, WIDTH, DEPTH, CHANNELS)
 
     # test counts
     train_test_count = len(sample_list) * (height_end - height_start) * (day_end - day_start)
