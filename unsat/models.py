@@ -5,6 +5,11 @@ from torch import nn
 
 
 class UltraLocalModel(nn.Module):
+    """
+    Baseline model that only uses the current pixel's value to predict the label.
+    It does not take into account the area around the pixel at all.
+    """
+
     def __init__(
         self, input_size: int, hidden_sizes: List[int], output_size: int, activation: str = 'relu'
     ):
@@ -26,3 +31,12 @@ class UltraLocalModel(nn.Module):
         x = self.layers[-1](x)
         out = torch.softmax(x, dim=-1)
         return out
+
+
+class ThresholdModel(UltraLocalModel):
+    """
+    Linear
+    """
+
+    def __init__(self, input_size: int, output_size: int):
+        super().__init__(input_size, [], output_size)

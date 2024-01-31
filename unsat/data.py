@@ -59,29 +59,60 @@ class XRayDataset(Dataset):
 
     def __init__(self, hdf5_path: str, data_selection: DataSelection, name: str):
         self.name = name
-        self.hdf5_file = h5py.File(hdf5_path, 'r')
+        self.hdf5_file = None  # Has to be opened in first getitem call to be picklable
+        self.hdf5_path = hdf5_path
         self.selection = data_selection
 
     def __len__(self):
         return self.selection.num_points
 
     def __getitem__(self, idx):
+        if not self.hdf5_file:
+            self.hdf5_file = h5py.File(self.hdf5_path, 'r')
+
         (sample_idx, data_idx) = divmod(idx, self.selection.points_per_sample)
 
         (day_idx, height_idx) = divmod(data_idx, self.selection.num_heights)
         day_idx += self.selection.day_range[0]
         height_idx += self.selection.height_range[0]
 
-        data = self.hdf5_file[self.selection.sample_list[sample_idx]]['data']
-        data = data[day_idx, height_idx]
-        labels = self.hdf5_file[self.selection.sample_list[sample_idx]]['labels'][
-            day_idx, height_idx
-        ]
+        sample_name = self.selection.sample_list[sample_idx]
+        data = self.hdf5_file[sample_name]['data'][day_idx, height_idx]
+        labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]
 
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
+        # labels = torch.from_numpy(labels).type(torch.float32)
 
         return data, labels
+
+
+class TestDataset(Dataset):
+    def __init__(self, hdf5_path: str, data_selection: DataSelection, name: str):
+        print(f"Creating fake dataset {name} with {data_selection.num_points} samples")
+        self.name = name
+        self.length = data_selection.num_points
+        if 'test' in name:
+            self.length = 100
+
+        # Get the shape of the data
+        print("Getting data shape")
+        data_shape = (650, 650, 1)
+
+        print(f"Creating fake data: np.random.rand({self.length}, *{data_shape})")
+        self.xs = torch.from_numpy(np.random.randn(self.length, *data_shape)).type(torch.float32)
+        # random integers between 0 and 4 of same shape
+        self.ys = torch.from_numpy(np.random.randint(0, 4, size=(self.length, *data_shape))).type(
+            torch.long
+        )
+
+        print(f"Created fake dataset {name} of shape {self.xs.shape} and dtype {self.xs.dtype}")
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        return self.xs[idx], self.ys[idx]
 
 
 class XRayDataModule(L.LightningDataModule):
@@ -105,6 +136,7 @@ class XRayDataModule(L.LightningDataModule):
         validation_split: fraction of training data to use for validation
         batch_size: batch size for dataloaders
         seed: random seed for splitting data
+        num_workers: number of parallel workers for dataloaders
     """
 
     def __init__(
@@ -116,6 +148,7 @@ class XRayDataModule(L.LightningDataModule):
         validation_split: float,
         batch_size: int,
         seed: int = 42,
+        num_workers: int = 0,
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -125,8 +158,10 @@ class XRayDataModule(L.LightningDataModule):
         self.validation_split = validation_split
         self.seed = seed
         self.batch_size = batch_size
+        self.num_workers = num_workers
 
         self.dataloaders = {}
+        self.dataset_class = XRayDataset
 
     def prepare_data(self):
         datasets = {}
@@ -135,7 +170,7 @@ class XRayDataModule(L.LightningDataModule):
             height_range=self.height_range,
             day_range=self.train_day_range,
         )
-        train_val_dataset = XRayDataset(
+        train_val_dataset = self.dataset_class(
             hdf5_path=self.hdf5_path, data_selection=train_val_selection, name='train_val'
         )
 
@@ -162,7 +197,7 @@ class XRayDataModule(L.LightningDataModule):
         strict_test_selection = DataSelection(
             sample_list=test_samples, height_range=self.height_range, day_range=test_day_range
         )
-        datasets['test_strict'] = XRayDataset(
+        datasets['test_strict'] = self.dataset_class(
             hdf5_path=self.hdf5_path, data_selection=strict_test_selection, name='test_strict'
         )
 
@@ -170,7 +205,7 @@ class XRayDataModule(L.LightningDataModule):
         overlap_test_selection_same_days = DataSelection(
             sample_list=test_samples, height_range=self.height_range, day_range=self.train_day_range
         )
-        overlap_test_dataset_same_days = XRayDataset(
+        overlap_test_dataset_same_days = self.dataset_class(
             hdf5_path=self.hdf5_path,
             data_selection=overlap_test_selection_same_days,
             name='test_overlap_same_days',
@@ -178,7 +213,7 @@ class XRayDataModule(L.LightningDataModule):
         overlap_test_selection_same_samples = DataSelection(
             sample_list=self.train_samples, height_range=self.height_range, day_range=test_day_range
         )
-        overlap_test_dataset_same_samples = XRayDataset(
+        overlap_test_dataset_same_samples = self.dataset_class(
             hdf5_path=self.hdf5_path,
             data_selection=overlap_test_selection_same_samples,
             name='test_overlap_same_samples',
@@ -191,9 +226,24 @@ class XRayDataModule(L.LightningDataModule):
 
         # turn into dataloaders
         self.dataloaders = {
-            name: DataLoader(dataset, batch_size=self.batch_size, shuffle=(name == 'train'))
+            name: DataLoader(
+                dataset,
+                batch_size=self.batch_size,
+                shuffle=(name == 'train'),
+                num_workers=self.num_workers,
+                persistent_workers=True,
+            )
             for name, dataset in datasets.items()
         }
+
+        print("Training data: ")
+        print(f"len(self.dataloaders['train']): {len(self.dataloaders['train'])}")
+        print(f"len(self.dataloaders['train'].dataset): {len(self.dataloaders['train'].dataset)}")
+        print(f"self.batch_size: {self.batch_size}")
+        print(f"self.num_workers: {self.num_workers}")
+        it = iter(self.dataloaders['train'])
+        x, y = next(it)
+        print(f"x.shape: {x.shape}")
 
     def train_dataloader(self):
         return self.dataloaders['train']
