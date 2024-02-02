@@ -93,4 +93,5 @@ data:
   validation_split: 0.1
   seed: 42
   batch_size: 16
+  num_workers: 8
 ckpt_path: null

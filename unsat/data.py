@@ -59,24 +59,27 @@ class XRayDataset(Dataset):
 
     def __init__(self, hdf5_path: str, data_selection: DataSelection, name: str):
         self.name = name
-        self.hdf5_file = h5py.File(hdf5_path, 'r')
+        self.hdf5_path = hdf5_path
+        self.hdf5_file = None  # Has to be opened in __getitem__ to be picklable
         self.selection = data_selection
 
     def __len__(self):
         return self.selection.num_points
 
     def __getitem__(self, idx):
+        if not self.hdf5_file:
+            self.hdf5_file = h5py.File(self.hdf5_path, 'r')
+
         (sample_idx, data_idx) = divmod(idx, self.selection.points_per_sample)
 
         (day_idx, height_idx) = divmod(data_idx, self.selection.num_heights)
         day_idx += self.selection.day_range[0]
         height_idx += self.selection.height_range[0]
 
-        data = self.hdf5_file[self.selection.sample_list[sample_idx]]['data']
-        data = data[day_idx, height_idx]
-        labels = self.hdf5_file[self.selection.sample_list[sample_idx]]['labels'][
-            day_idx, height_idx
-        ]
+        sample_name = self.selection.sample_list[sample_idx]
+
+        data = self.hdf5_file[sample_name]['data'][day_idx, height_idx]
+        labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]
 
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
@@ -105,6 +108,7 @@ class XRayDataModule(L.LightningDataModule):
         validation_split: fraction of training data to use for validation
         batch_size: batch size for dataloaders
         seed: random seed for splitting data
+        num_workers: number of parallel workers for dataloaders
     """
 
     def __init__(
@@ -115,7 +119,8 @@ class XRayDataModule(L.LightningDataModule):
         train_day_range: Tuple[int, int],
         validation_split: float,
         batch_size: int,
-        seed: int = 42,
+        seed: int,
+        num_workers: int,
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -125,6 +130,7 @@ class XRayDataModule(L.LightningDataModule):
         self.validation_split = validation_split
         self.seed = seed
         self.batch_size = batch_size
+        self.num_workers = num_workers
 
         self.dataloaders = {}
 
@@ -191,7 +197,12 @@ class XRayDataModule(L.LightningDataModule):
 
         # turn into dataloaders
         self.dataloaders = {
-            name: DataLoader(dataset, batch_size=self.batch_size, shuffle=(name == 'train'))
+            name: DataLoader(
+                dataset,
+                batch_size=self.batch_size,
+                shuffle=(name == 'train'),
+                num_workers=self.num_workers,
+            )
             for name, dataset in datasets.items()
         }
 
