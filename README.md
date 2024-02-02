@@ -38,7 +38,8 @@ To do more useful runs, look at other config files or modify it yourself.
 All configuration settings should be in the config file rather than the code itself.
 
 Anything in one config can be overridden by a second one, or by single options as we do above for the data path.
-For instance to turn on profiling you can add: `--trainer.profiler pytorch`.
+For instance to turn on profiling you can add: `--trainer.profiler pytorch`, or to use a predefined
+configured profiler, add `configs/profiler.yaml`.
 
 ## Snellius
 

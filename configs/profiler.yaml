@@ -1,0 +1,9 @@
+trainer:
+  profiler:
+    class_path: lightning.pytorch.profilers.PyTorchProfiler
+    init_args:
+      dirpath: profiles
+      filename: testing-profile
+      sort_by_key: cpu_time_total
+      group_by_input_shapes: true
+      row_limit: 40
