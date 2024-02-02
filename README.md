@@ -7,11 +7,15 @@
 
 ### Using `poetry` (recommended)
 
-1. Navigate to the project folder
-2. Run `poetry install`
+1. Clone repo: `git clone git@github.com:UNSAT3D/unsat.git`
+2. Navigate to the project folder: `cd unsat`
+3. If necessary install poetry: `pip install poetry`
+4. Run `poetry install`
 
-Your working environment can be activated via `poetry shell`.
+Your working environment can be activated via `poetry shell`, or to use it in a single command, prefix it with `poetry run`.
 More information on poetry available [here](https://python-poetry.org/).
+
+To access weights and biases, run `poetry run wandb login` once, and copy your API key found [here](https://wandb.ai/authorize).
 
 ### Weights and biases
 
@@ -35,6 +39,25 @@ All configuration settings should be in the config file rather than the code its
 
 Anything in one config can be overridden by a second one, or by single options as we do above for the data path.
 For instance to turn on profiling you can add: `--trainer.profiler pytorch`.
+
+## Snellius
+
+On snellius, to install, run these commands:
+```bash
+module load 2023
+module load Python/3.11.3-GCCcore-12.3.0
+```
+and then follow the general instructions at the top.
+
+To submit a job, a basic script is provided, simply run (from the top project folder):
+```bash
+sbatch scripts/run.slurm configs/test_config.yaml
+```
+
+This will create several outputs:
+- In `logs_slurm/`: The terminal output
+- In `wandb/`: The metadata of the run which is synced to weights and biases.
+- In `project-unsat/`: Model checkpoints and other data only stored locally.
 
 ## Contributing
 
