@@ -23,15 +23,18 @@ Make sure this is set up first.
 Once installed, from the project folder run
 
 ```bash
-python unsat/main.py fit -c configs/test_config.yaml
+python unsat/main.py fit -c configs/test_config.yaml --data.hdf5_path <path to data>
 ```
 
 This does a short training run and uploads the results to weights and biases.
 In the terminal you should see a link to the run.
-The config used will be saved to weights and biases too as `lightning_config.yaml``.
+The config used will be saved to weights and biases too as `lightning_config.yaml`.
 
 To do more useful runs, look at other config files or modify it yourself.
 All configuration settings should be in the config file rather than the code itself.
+
+Anything in one config can be overridden by a second one, or by single options as we do above for the data path.
+For instance to turn on profiling you can add: `--trainer.profiler pytorch`.
 
 ## Contributing
 
