@@ -7,3 +7,6 @@ trainer:
       sort_by_key: cpu_time_total
       group_by_input_shapes: true
       row_limit: 40
+    dict_kwargs:
+      record_shapes: true
+      use_cuda: true
