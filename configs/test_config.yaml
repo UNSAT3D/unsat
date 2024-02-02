@@ -10,13 +10,13 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       name: null
-      save_dir: .
+      save_dir: null
       version: null
       offline: false
       dir: null
       id: null
       anonymous: null
-      project: testing-infrastructure
+      project: project-unsat
       log_model: false
       experiment: null
       prefix: ''
