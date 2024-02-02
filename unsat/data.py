@@ -67,16 +67,20 @@ class XRayDataset(Dataset):
         return self.selection.num_points
 
     def __getitem__(self, idx):
+        """
+        Get data and label for a single point in the dataset, given its index.
+        This is used in the dataloader to construct batches.
+        """
         if not self.hdf5_file:
             self.hdf5_file = h5py.File(self.hdf5_path, 'r')
 
+        # Extract sample, day and height indices from the overall index using modular arithmetic
         (sample_idx, data_idx) = divmod(idx, self.selection.points_per_sample)
+        sample_name = self.selection.sample_list[sample_idx]
 
         (day_idx, height_idx) = divmod(data_idx, self.selection.num_heights)
         day_idx += self.selection.day_range[0]
         height_idx += self.selection.height_range[0]
-
-        sample_name = self.selection.sample_list[sample_idx]
 
         data = self.hdf5_file[sample_name]['data'][day_idx, height_idx]
         labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]

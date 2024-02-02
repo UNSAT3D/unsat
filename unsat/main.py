@@ -4,6 +4,12 @@ from train import LightningTrainer, WandbSaveConfigCallback
 
 
 def cli_main():
+    """
+    Standard lightning CLI definition, with added callback to save the lightning config to wandb.
+
+    Usage e.g.: python main.py fit -c config.yaml
+    See also https://lightning.ai/docs/pytorch/stable/cli/lightning_cli_intermediate.html
+    """
     cli = LightningCLI(
         model_class=LightningTrainer,
         datamodule_class=XRayDataModule,

@@ -12,14 +12,23 @@ MODEL_CLASSES = {"ultra_local": UltraLocalModel}
 class LightningTrainer(L.LightningModule):
     def __init__(self, model_class: str, model_kwargs: dict, **kwargs):
         """
-        Hello world!
+        Lightning module defining the model and the training loop.
+
+        Args:
+            model_class (str):
+                The model class to use.
+            model_kwargs (dict):
+                The keyword arguments to pass to the model class.
         """
         super().__init__()
 
         self.num_classes = 5
-        self.model = MODEL_CLASSES[model_class](
-            **model_kwargs, input_size=1, output_size=self.num_classes
-        )
+        try:
+            self.model = MODEL_CLASSES[model_class](
+                **model_kwargs, input_size=1, output_size=self.num_classes
+            )
+        except KeyError:
+            raise ValueError(f"Model class {model_class} not found.")
 
         self.train_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
         self.val_acc = Accuracy(task="multiclass", num_classes=self.num_classes)

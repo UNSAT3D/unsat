@@ -5,6 +5,18 @@ from torch import nn
 
 
 class UltraLocalModel(nn.Module):
+    """
+    A simple feedforward neural network model that only looks at a single pixel to make a prediction.
+
+    Args:
+        input_size (int):
+            The number of input features.
+        hidden_sizes (List[int]):
+            The number of hidden units in each layer.
+        output_size (int):
+            The number of output classes.
+    """
+
     def __init__(
         self, input_size: int, hidden_sizes: List[int], output_size: int, activation: str = 'relu'
     ):
