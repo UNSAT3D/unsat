@@ -13,7 +13,7 @@ WIDTH = 3
 DEPTH = 3
 CHANNELS = 1
 
-BATCH_SIZE = 3
+BATCH_SIZE = 4
 VAL_SPLIT = 0.4
 
 SAMPLES = ['coarse/loose/04', 'fine/dense/07']
@@ -76,6 +76,8 @@ def test_dataloaders(create_test_h5, remove_test_h5):
         train_day_range=(day_start, day_end),
         validation_split=VAL_SPLIT,
         batch_size=BATCH_SIZE,
+        seed=0,
+        num_workers=1,
     )
     data_module.prepare_data()
     dataloaders = data_module.dataloaders
@@ -88,11 +90,14 @@ def test_dataloaders(create_test_h5, remove_test_h5):
 
     # test counts
     train_test_count = len(sample_list) * (height_end - height_start) * (day_end - day_start)
-    assert len(dataloaders['val']) + len(dataloaders['train']) == train_test_count
+    assert len(dataloaders['val'].dataset) + len(dataloaders['train'].dataset) == train_test_count
 
     total_count = len(SAMPLES) * (height_end - height_start) * DAYS
     test_count = total_count - train_test_count
-    assert len(dataloaders['test_strict']) + len(dataloaders['test_overlap']) == test_count
+    assert (
+        len(dataloaders['test_strict'].dataset) + len(dataloaders['test_overlap'].dataset)
+        == test_count
+    )
 
     # test overlaps
     elements = {}
