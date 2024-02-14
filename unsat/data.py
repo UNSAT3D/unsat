@@ -207,6 +207,7 @@ class XRayDataModule(L.LightningDataModule):
                 batch_size=self.batch_size,
                 shuffle=(name == 'train'),
                 num_workers=self.num_workers,
+                persistent_workers=True,
             )
             for name, dataset in datasets.items()
         }
