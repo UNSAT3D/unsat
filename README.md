@@ -7,6 +7,7 @@
 
 ### Using `poetry` (recommended)
 
+0. Running on Snellius? Read first [the subsection](#snellius) below
 1. Clone repo: `git clone git@github.com:UNSAT3D/unsat.git`
 2. Navigate to the project folder: `cd unsat`
 3. If necessary install poetry: `pip install poetry`
