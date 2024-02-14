@@ -27,9 +27,7 @@ class LightningTrainer(L.LightningModule):
 
         self.num_classes = 5
         try:
-            self.model = MODEL_CLASSES[model_class](
-                **model_kwargs, input_size=1, output_size=self.num_classes
-            )
+            self.model = MODEL_CLASSES[model_class](**model_kwargs, num_classes=self.num_classes)
         except KeyError:
             raise ValueError(f"Model class {model_class} not found.")
 
@@ -37,13 +35,13 @@ class LightningTrainer(L.LightningModule):
         self.val_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
 
     def training_step(self, batch, batch_idx):
-        x, labels = batch
-        preds = self.model(x)
+        x, labels = batch  # labels shape (batch_size, X, Y)
+        preds = self.model(x)  # (batch_size, C, X, Y)
 
         loss = self.compute_loss(preds, labels)
         self.log("train/loss", loss)
 
-        self.train_acc(preds.reshape(-1, self.num_classes), labels.reshape(-1))
+        self.train_acc(preds, labels)
         self.log("train/acc", self.train_acc, on_step=True, on_epoch=False)
 
         return loss
@@ -56,12 +54,10 @@ class LightningTrainer(L.LightningModule):
 
         self.log("val/loss", loss)
 
-        self.val_acc(preds.reshape(-1, self.num_classes), labels.reshape(-1))
+        self.val_acc(preds, labels)
         self.log("val/acc", self.val_acc, on_step=True, on_epoch=True)
 
     def compute_loss(self, preds, labels):
-        preds = torch.reshape(preds, (-1, self.num_classes))
-        labels = torch.reshape(labels, (-1,))
         loss = F.cross_entropy(preds, labels)
         return loss
 
