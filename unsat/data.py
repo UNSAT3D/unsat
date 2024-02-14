@@ -89,6 +89,8 @@ class XRayDataset(Dataset):
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.uint8)
 
+        data = data.unsqueeze(0)  # Add channel dimension
+
         return data, labels
 
 
