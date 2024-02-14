@@ -31,8 +31,13 @@ class LightningTrainer(L.LightningModule):
         except KeyError:
             raise ValueError(f"Model class {model_class} not found.")
 
-        self.train_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
-        self.val_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
+        self.metrics = torch.nn.ModuleDict()
+        self.metrics['acc'] = torch.nn.ModuleDict(
+            {
+                'train_': Accuracy(task="multiclass", num_classes=self.num_classes),
+                'val_': Accuracy(task="multiclass", num_classes=self.num_classes),
+            }
+        )
 
     def training_step(self, batch, batch_idx):
         x, labels = batch  # labels shape (batch_size, X, Y)
@@ -41,8 +46,7 @@ class LightningTrainer(L.LightningModule):
         loss = self.compute_loss(preds, labels)
         self.log("train/loss", loss)
 
-        self.train_acc(preds, labels)
-        self.log("train/acc", self.train_acc, on_step=True, on_epoch=False)
+        self.compute_metrics(preds, labels, mode="train_")
 
         return loss
 
@@ -51,15 +55,17 @@ class LightningTrainer(L.LightningModule):
         preds = self.model(x)
 
         loss = self.compute_loss(preds, labels)
-
         self.log("val/loss", loss)
 
-        self.val_acc(preds, labels)
-        self.log("val/acc", self.val_acc, on_step=True, on_epoch=True)
+        self.compute_metrics(preds, labels, mode="val_")
 
     def compute_loss(self, preds, labels):
         loss = F.cross_entropy(preds, labels)
         return loss
+
+    def compute_metrics(self, preds, labels, mode):
+        self.metrics['acc'][mode](preds, labels)
+        self.log(f"{mode[:-1]}/acc", self.metrics['acc'][mode], on_step=True, on_epoch=True)
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())
