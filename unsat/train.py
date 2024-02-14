@@ -1,5 +1,5 @@
 import lightning as L
-from lightning.pytorch.cli import SaveConfigCallback
+from lightning.pytorch.cli import OptimizerCallable, SaveConfigCallback
 from lightning.pytorch.loggers import WandbLogger
 from models import UltraLocalModel
 import torch
@@ -10,7 +10,9 @@ MODEL_CLASSES = {"ultra_local": UltraLocalModel}
 
 
 class LightningTrainer(L.LightningModule):
-    def __init__(self, model_class: str, model_kwargs: dict, **kwargs):
+    def __init__(
+        self, model_class: str, model_kwargs: dict, optimizer: OptimizerCallable, **kwargs
+    ):
         """
         Lightning module defining the model and the training loop.
 
@@ -21,6 +23,7 @@ class LightningTrainer(L.LightningModule):
                 The keyword arguments to pass to the model class.
         """
         super().__init__()
+        self.optimizer = optimizer
 
         self.num_classes = 5
         try:
@@ -63,7 +66,8 @@ class LightningTrainer(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=1e-1)
+        optimizer = self.optimizer(self.parameters())
+        return optimizer
 
 
 class WandbSaveConfigCallback(SaveConfigCallback):

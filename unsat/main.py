@@ -15,6 +15,7 @@ def cli_main():
         datamodule_class=XRayDataModule,
         save_config_callback=WandbSaveConfigCallback,
         save_config_kwargs={"save_to_log_dir": False, "config_filename": "lightning_config.yaml"},
+        auto_configure_optimizers=False,
     )
 
 
