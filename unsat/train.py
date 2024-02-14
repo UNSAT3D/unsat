@@ -4,7 +4,7 @@ from lightning.pytorch.loggers import WandbLogger
 from models import UltraLocalModel
 import torch
 import torch.nn.functional as F
-from torchmetrics.classification import Accuracy
+from torchmetrics.classification import Accuracy, F1Score
 
 MODEL_CLASSES = {"ultra_local": UltraLocalModel}
 
@@ -38,6 +38,12 @@ class LightningTrainer(L.LightningModule):
                 'val_': Accuracy(task="multiclass", num_classes=self.num_classes),
             }
         )
+        self.metrics['f1'] = torch.nn.ModuleDict(
+            {
+                'train_': F1Score(task="multiclass", num_classes=self.num_classes),
+                'val_': F1Score(task="multiclass", num_classes=self.num_classes),
+            }
+        )
 
     def training_step(self, batch, batch_idx):
         x, labels = batch  # labels shape (batch_size, X, Y)
@@ -66,6 +72,9 @@ class LightningTrainer(L.LightningModule):
     def compute_metrics(self, preds, labels, mode):
         self.metrics['acc'][mode](preds, labels)
         self.log(f"{mode[:-1]}/acc", self.metrics['acc'][mode], on_step=True, on_epoch=True)
+
+        self.metrics['f1'][mode](preds, labels)
+        self.log(f"{mode[:-1]}/f1", self.metrics['f1'][mode], on_step=True, on_epoch=True)
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())
