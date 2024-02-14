@@ -28,7 +28,7 @@ Make sure this is set up first.
 Once installed, from the project folder run
 
 ```bash
-python unsat/main.py fit -c configs/test_config.yaml --data.hdf5_path <path to data>
+poetry run python unsat/main.py fit -c configs/test_config.yaml --data.hdf5_path <path to data>
 ```
 
 This does a short training run and uploads the results to weights and biases.
