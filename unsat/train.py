@@ -4,7 +4,9 @@ from lightning.pytorch.loggers import WandbLogger
 from models import UltraLocalModel
 import torch
 import torch.nn.functional as F
-from torchmetrics.classification import Accuracy, F1Score
+from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
+
+import wandb
 
 MODEL_CLASSES = {"ultra_local": UltraLocalModel}
 
@@ -39,6 +41,10 @@ class LightningTrainer(L.LightningModule):
         self.metrics['f1'] = torch.nn.ModuleDict(
             {'train_': F1Score(**metrics_args), 'val_': F1Score(**metrics_args)}
         )
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes, normalize='all')
+        self.metrics['confusion'] = torch.nn.ModuleDict(
+            {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
+        )
 
     def training_step(self, batch, batch_idx):
         x, labels = batch  # labels shape (batch_size, X, Y)
@@ -70,6 +76,29 @@ class LightningTrainer(L.LightningModule):
 
         self.metrics['f1'][mode](preds, labels)
         self.log(f"{mode[:-1]}/f1", self.metrics['f1'][mode], on_step=True, on_epoch=True)
+
+        if self.current_epoch % 100 == 0:
+            self.compute_confusion(preds, labels, mode)
+
+    def compute_confusion(self, preds, labels, mode):
+        class_names = ["water", "-", "air", "root", "soil"]
+
+        confusion = self.metrics['confusion'][mode](preds, labels)
+
+        data = []
+        for i in range(self.num_classes):
+            for j in range(self.num_classes):
+                data.append([class_names[i], class_names[j], confusion[i, j].item()])
+
+        columns = ["Actual", "Predicted", "nPredictions"]
+        fields = {k: k for k in columns}
+        plot = wandb.plot_table(
+            "wandb/confusion_matrix/v1",
+            wandb.Table(columns=columns, data=data),
+            fields,
+            {"title": f"epoch_{self.current_epoch}"},
+        )
+        wandb.log({f"confusion/{mode[:-1]}": plot})
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())
