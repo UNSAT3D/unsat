@@ -5,6 +5,7 @@ from models import UltraLocalModel
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
+from torchmetrics.wrappers import ClasswiseWrapper
 
 import wandb
 
@@ -28,19 +29,48 @@ class LightningTrainer(L.LightningModule):
         self.optimizer = optimizer
 
         self.num_classes = 5
+        self.class_names = ["water", "-", "air", "root", "soil"]
+
         try:
             self.model = MODEL_CLASSES[model_class](**model_kwargs, num_classes=self.num_classes)
         except KeyError:
             raise ValueError(f"Model class {model_class} not found.")
 
-        metrics_args = dict(task="multiclass", num_classes=self.num_classes, average='macro')
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes)
         self.metrics = torch.nn.ModuleDict()
         self.metrics['acc'] = torch.nn.ModuleDict(
-            {'train_': Accuracy(**metrics_args), 'val_': Accuracy(**metrics_args)}
+            {
+                'train_': Accuracy(**metrics_args, average='macro'),
+                'val_': Accuracy(**metrics_args, average='macro'),
+            }
         )
         self.metrics['f1'] = torch.nn.ModuleDict(
-            {'train_': F1Score(**metrics_args), 'val_': F1Score(**metrics_args)}
+            {
+                'train_': F1Score(**metrics_args, average='macro'),
+                'val_': F1Score(**metrics_args, average='macro'),
+            }
         )
+        self.metrics['acc_per_class'] = torch.nn.ModuleDict(
+            {
+                'train_': ClasswiseWrapper(
+                    Accuracy(**metrics_args, average=None), labels=self.class_names
+                ),
+                'val_': ClasswiseWrapper(
+                    Accuracy(**metrics_args, average=None), labels=self.class_names
+                ),
+            }
+        )
+        self.metrics['f1_per_class'] = torch.nn.ModuleDict(
+            {
+                'train_': ClasswiseWrapper(
+                    F1Score(**metrics_args, average=None), labels=self.class_names
+                ),
+                'val_': ClasswiseWrapper(
+                    F1Score(**metrics_args, average=None), labels=self.class_names
+                ),
+            }
+        )
+
         metrics_args = dict(task="multiclass", num_classes=self.num_classes, normalize='all')
         self.metrics['confusion'] = torch.nn.ModuleDict(
             {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
@@ -71,24 +101,32 @@ class LightningTrainer(L.LightningModule):
         return loss
 
     def compute_metrics(self, preds, labels, mode):
-        self.metrics['acc'][mode](preds, labels)
-        self.log(f"{mode[:-1]}/acc", self.metrics['acc'][mode], on_step=True, on_epoch=True)
+        acc_overall = self.metrics['acc'][mode](preds, labels)
+        self.log(f"{mode[:-1]}/acc/all", self.metrics['acc'][mode], on_step=True, on_epoch=True)
 
         self.metrics['f1'][mode](preds, labels)
         self.log(f"{mode[:-1]}/f1", self.metrics['f1'][mode], on_step=True, on_epoch=True)
+
+        accs_per_class = self.metrics['acc_per_class'][mode](preds, labels)
+        accs_per_class = {
+            f"{mode[:-1]}/acc/{k.split('_')[1]}": v for k, v in accs_per_class.items()
+        }
+        wandb.log(accs_per_class)
+
+        f1_per_class = self.metrics['f1_per_class'][mode](preds, labels)
+        f1_per_class = {f"{mode[:-1]}/f1/{k.split('_')[1]}": v for k, v in f1_per_class.items()}
+        wandb.log(f1_per_class)
 
         if self.current_epoch % 100 == 0:
             self.compute_confusion(preds, labels, mode)
 
     def compute_confusion(self, preds, labels, mode):
-        class_names = ["water", "-", "air", "root", "soil"]
-
         confusion = self.metrics['confusion'][mode](preds, labels)
 
         data = []
         for i in range(self.num_classes):
             for j in range(self.num_classes):
-                data.append([class_names[i], class_names[j], confusion[i, j].item()])
+                data.append([self.class_names[i], self.class_names[j], confusion[i, j].item()])
 
         columns = ["Actual", "Predicted", "nPredictions"]
         fields = {k: k for k in columns}
@@ -96,7 +134,7 @@ class LightningTrainer(L.LightningModule):
             "wandb/confusion_matrix/v1",
             wandb.Table(columns=columns, data=data),
             fields,
-            {"title": f"epoch_{self.current_epoch}"},
+            {"title": f"{mode[:-1]} epoch {self.current_epoch}"},
         )
         wandb.log({f"confusion/{mode[:-1]}": plot})
 
