@@ -31,18 +31,13 @@ class LightningTrainer(L.LightningModule):
         except KeyError:
             raise ValueError(f"Model class {model_class} not found.")
 
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes, average='macro')
         self.metrics = torch.nn.ModuleDict()
         self.metrics['acc'] = torch.nn.ModuleDict(
-            {
-                'train_': Accuracy(task="multiclass", num_classes=self.num_classes),
-                'val_': Accuracy(task="multiclass", num_classes=self.num_classes),
-            }
+            {'train_': Accuracy(**metrics_args), 'val_': Accuracy(**metrics_args)}
         )
         self.metrics['f1'] = torch.nn.ModuleDict(
-            {
-                'train_': F1Score(task="multiclass", num_classes=self.num_classes),
-                'val_': F1Score(task="multiclass", num_classes=self.num_classes),
-            }
+            {'train_': F1Score(**metrics_args), 'val_': F1Score(**metrics_args)}
         )
 
     def training_step(self, batch, batch_idx):
