@@ -8,7 +8,7 @@
 ### Using `poetry` (recommended)
 
 0. Running on Snellius? Read first [the subsection](#snellius) below
-1. Clone repo: `git clone git@github.com:UNSAT3D/unsat.git`
+1. Clone repo: `git clone https://github.com/UNSAT3D/unsat.git
 2. Navigate to the project folder: `cd unsat`
 3. If necessary install poetry: `pip install poetry`
 4. Run `poetry install`
@@ -21,7 +21,7 @@ To access weights and biases, run `poetry run wandb login` once, and copy your A
 ### Weights and biases
 
 We use weights and biases to track our experiments. 
-Make sure this is set up first.
+Make sure this is set up first: make an account, find your API key and log in, following the instructions [here](https://docs.wandb.ai/quickstart).
 
 ## Usage
 
@@ -29,6 +29,11 @@ Once installed, from the project folder run
 
 ```bash
 poetry run python unsat/main.py fit -c configs/test_config.yaml --data.hdf5_path <path to data>
+```
+
+Note this assumes a GPU is available. If not, you can override the option by appending to the command above:
+```bash
+--trainer.accelerator cpu
 ```
 
 This does a short training run and uploads the results to weights and biases.
