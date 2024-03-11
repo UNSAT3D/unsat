@@ -35,9 +35,7 @@ class UltraLocalModel(nn.Module):
         for layer in self.layers[:-1]:
             x = layer(x)
             x = torch.relu(x)
-        x = self.layers[-1](x)  # (batch_size, num_pixels, C)
-
-        out = torch.softmax(x, dim=-1)
+        out = self.layers[-1](x)  # (batch_size, num_pixels, C)
 
         # reshape to have channels first
         out = out.transpose(1, 2)  # (batch_size, C, num_pixels)
