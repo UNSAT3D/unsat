@@ -71,7 +71,7 @@ class LightningTrainer(L.LightningModule):
             }
         )
 
-        metrics_args = dict(task="multiclass", num_classes=self.num_classes, normalize='all')
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes, normalize='true')
         self.metrics['confusion'] = torch.nn.ModuleDict(
             {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
         )
