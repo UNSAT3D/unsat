@@ -65,7 +65,6 @@ class CheckFaultsCallback(Callback):
         self.data = torch.from_numpy(np.stack(self.data)).type(torch.float32)
         self.data = self.data.unsqueeze(1)
         self.labels = torch.from_numpy(np.stack(self.labels)).type(torch.long)
-        print(f'self.data.shape: {self.data.shape}, self.labels.shape: {self.labels.shape}')
 
     def on_train_epoch_end(self, trainer, pl_module):
         preds = pl_module.model(self.data.to(pl_module.device)).argmax(dim=1).to('cpu')
