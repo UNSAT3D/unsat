@@ -1,5 +1,9 @@
+import h5py
 from lightning.pytorch.callbacks import Callback
+import numpy as np
 import torch
+
+import wandb
 
 
 class ClassWeightsCallback(Callback):
@@ -27,3 +31,54 @@ class ClassWeightsCallback(Callback):
 
         # Need to send the class weights to the device to avoid errors
         pl_module.class_weights = class_weights.to(pl_module.device)
+
+
+class CheckFaultsCallback(Callback):
+    """
+    After every training epoch, compute the model predictions on a set of examples where the
+    labels are known to be wrong, and upload plots of these to wandb.
+    """
+
+    def __init__(self, faults_path: str):
+        self.faults_path = faults_path
+
+        # for each example, store this info
+        self.samples = []
+        self.centers = []
+        self.issues = []
+        self.data = []
+        self.labels = []
+
+        with h5py.File(faults_path, 'r') as f:
+
+            def store_faults(name, obj):
+                if isinstance(obj, h5py.Group) and 'data' in obj and 'labels' in obj:
+                    sample, center = name.rsplit('/', 1)
+                    self.samples.append(sample)
+                    self.centers.append(center)
+                    self.issues.append(obj.attrs['issue'])
+                    self.data.append(obj['data'][()])
+                    self.labels.append(obj['labels'][()])
+
+            f.visititems(store_faults)
+
+        self.data = torch.from_numpy(np.stack(self.data)).type(torch.float32)
+        self.data = self.data.unsqueeze(1)
+        self.labels = torch.from_numpy(np.stack(self.labels)).type(torch.long)
+        print(f'self.data.shape: {self.data.shape}, self.labels.shape: {self.labels.shape}')
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        preds = pl_module.model(self.data.to(pl_module.device)).argmax(dim=1).to('cpu')
+
+        class_labels = {i: name for i, name in enumerate(pl_module.class_names)}
+        for i, (sample, issue, center) in enumerate(zip(self.samples, self.issues, self.centers)):
+            plot = wandb.Image(
+                self.data.squeeze(1)[i].numpy(),
+                caption=f"Sample: {sample}, Issue: {issue} Center: {center}",
+                masks={
+                    "predictions": {"mask_data": preds[i].numpy(), "class_labels": class_labels},
+                    "labels": {"mask_data": self.labels[i].numpy(), "class_labels": class_labels},
+                },
+            )
+
+            wandb.log({f"faults/{issue}/{sample}/{center}": plot})
