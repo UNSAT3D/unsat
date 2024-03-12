@@ -76,10 +76,8 @@ class LightningTrainer(L.LightningModule):
             {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
         )
 
-        freqs = torch.Tensor([0.3140, 0.2611, 0.0402, 0.0013, 0.3833])
-        weight = 1 / freqs
-        weight = weight / weight.sum()
-        self.loss_class = torch.nn.CrossEntropyLoss(weight=weight)
+        # These can be overriden to represent class frequencies by using the ClassWeightsCallback
+        self.class_weights = torch.ones(self.num_classes)
 
     def training_step(self, batch, batch_idx):
         x, labels = batch  # labels shape (batch_size, X, Y)
@@ -102,7 +100,7 @@ class LightningTrainer(L.LightningModule):
         self.compute_metrics(preds, labels, mode="val_")
 
     def compute_loss(self, preds, labels):
-        return self.loss_class(preds, labels)
+        return F.cross_entropy(preds, labels, weight=self.class_weights)
 
     def compute_metrics(self, preds, labels, mode):
         acc_overall = self.metrics['acc'][mode](preds, labels)
