@@ -78,16 +78,23 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  model_class: 'ultra_local'
-  model_kwargs:
-    hidden_sizes:
-    - 10
-    - 10
-    - 10
+  network:
+    class_path: unsat.models.UltraLocalModel
+    init_args:
+      hidden_sizes:
+      - 10
+      - 10
+      num_classes: 5
   optimizer:
     class_path: torch.optim.Adam
     init_args:
       lr: 3e-3
+  class_names:
+  - "water"
+  - "background"
+  - "air"
+  - "root"
+  - "soil"
 data:
   hdf5_path: /projects/0/einf3381/UNSAT/data/experimental.h5
   train_samples:

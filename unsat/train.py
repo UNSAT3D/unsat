@@ -1,7 +1,6 @@
 import lightning as L
 from lightning.pytorch.cli import OptimizerCallable, SaveConfigCallback
 from lightning.pytorch.loggers import WandbLogger
-from models import UltraLocalModel
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
@@ -9,32 +8,24 @@ from torchmetrics.wrappers import ClasswiseWrapper
 
 import wandb
 
-MODEL_CLASSES = {"ultra_local": UltraLocalModel}
-
 
 class LightningTrainer(L.LightningModule):
-    def __init__(
-        self, model_class: str, model_kwargs: dict, optimizer: OptimizerCallable, **kwargs
-    ):
+    def __init__(self, network, class_names, optimizer: OptimizerCallable, **kwargs):
         """
-        Lightning module defining the model and the training loop.
+        Lightning module defining the network and the training loop.
 
         Args:
-            model_class (str):
-                The model class to use.
-            model_kwargs (dict):
-                The keyword arguments to pass to the model class.
+            network (nn.Module):
+                The network to train.
+            class_names (List[str]):
+                The names of the classes.
         """
         super().__init__()
         self.optimizer = optimizer
+        self.network = network
 
-        self.num_classes = 5
-        self.class_names = ["water", "-", "air", "root", "soil"]
-
-        try:
-            self.model = MODEL_CLASSES[model_class](**model_kwargs, num_classes=self.num_classes)
-        except KeyError:
-            raise ValueError(f"Model class {model_class} not found.")
+        self.class_names = class_names
+        self.num_classes = len(class_names)
 
         metrics_args = dict(task="multiclass", num_classes=self.num_classes)
         self.metrics = torch.nn.ModuleDict()
@@ -81,7 +72,7 @@ class LightningTrainer(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, labels = batch  # labels shape (batch_size, X, Y)
-        preds = self.model(x)  # (batch_size, C, X, Y)
+        preds = self.network(x)  # (batch_size, C, X, Y)
 
         loss = self.compute_loss(preds, labels)
         self.log("train/loss", loss)
@@ -92,7 +83,7 @@ class LightningTrainer(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, labels = batch
-        preds = self.model(x)
+        preds = self.network(x)
 
         loss = self.compute_loss(preds, labels)
         self.log("val/loss", loss)

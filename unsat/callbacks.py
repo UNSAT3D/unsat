@@ -67,7 +67,7 @@ class CheckFaultsCallback(Callback):
         self.labels = torch.from_numpy(np.stack(self.labels)).type(torch.long)
 
     def on_train_epoch_end(self, trainer, pl_module):
-        preds = pl_module.model(self.data.to(pl_module.device)).argmax(dim=1).to('cpu')
+        preds = pl_module.network(self.data.to(pl_module.device)).argmax(dim=1).to('cpu')
 
         class_labels = {i: name for i, name in enumerate(pl_module.class_names)}
         for i, (sample, issue, center) in enumerate(zip(self.samples, self.issues, self.centers)):
