@@ -1,0 +1,12 @@
+trainer:
+  profiler:
+    class_path: lightning.pytorch.profilers.PyTorchProfiler
+    init_args:
+      dirpath: profiles
+      filename: testing-profile
+      sort_by_key: cuda_time_total
+      group_by_input_shapes: true
+      row_limit: 40
+    dict_kwargs:
+      record_shapes: true
+      use_cuda: true

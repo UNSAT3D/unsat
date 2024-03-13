@@ -10,5 +10,7 @@ coverage.xml
 
 # Logs
 lightning_logs/
+project-unsat/
 wandb/
-
+logs_slurm/
+profiles/
