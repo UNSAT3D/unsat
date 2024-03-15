@@ -1,65 +1,135 @@
 import lightning as L
 from lightning.pytorch.cli import OptimizerCallable, SaveConfigCallback
 from lightning.pytorch.loggers import WandbLogger
-from models import UltraLocalModel
 import torch
 import torch.nn.functional as F
-from torchmetrics.classification import Accuracy
+from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
+from torchmetrics.wrappers import ClasswiseWrapper
 
-MODEL_CLASSES = {"ultra_local": UltraLocalModel}
+import wandb
 
 
 class LightningTrainer(L.LightningModule):
-    def __init__(
-        self, model_class: str, model_kwargs: dict, optimizer: OptimizerCallable, **kwargs
-    ):
+    def __init__(self, network, class_names, optimizer: OptimizerCallable, **kwargs):
         """
-        Lightning module defining the model and the training loop.
+        Lightning module defining the network and the training loop.
 
         Args:
-            model_class (str):
-                The model class to use.
-            model_kwargs (dict):
-                The keyword arguments to pass to the model class.
+            network (nn.Module):
+                The network to train.
+            class_names (List[str]):
+                The names of the classes.
         """
         super().__init__()
         self.optimizer = optimizer
+        self.network = network
 
-        self.num_classes = 5
-        try:
-            self.model = MODEL_CLASSES[model_class](**model_kwargs, num_classes=self.num_classes)
-        except KeyError:
-            raise ValueError(f"Model class {model_class} not found.")
+        self.class_names = class_names
+        self.num_classes = len(class_names)
 
-        self.train_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
-        self.val_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes)
+        self.metrics = torch.nn.ModuleDict()
+        self.metrics['acc'] = torch.nn.ModuleDict(
+            {
+                'train_': Accuracy(**metrics_args, average='macro'),
+                'val_': Accuracy(**metrics_args, average='macro'),
+            }
+        )
+        self.metrics['f1'] = torch.nn.ModuleDict(
+            {
+                'train_': F1Score(**metrics_args, average='macro'),
+                'val_': F1Score(**metrics_args, average='macro'),
+            }
+        )
+        self.metrics['acc_per_class'] = torch.nn.ModuleDict(
+            {
+                'train_': ClasswiseWrapper(
+                    Accuracy(**metrics_args, average=None), labels=self.class_names
+                ),
+                'val_': ClasswiseWrapper(
+                    Accuracy(**metrics_args, average=None), labels=self.class_names
+                ),
+            }
+        )
+        self.metrics['f1_per_class'] = torch.nn.ModuleDict(
+            {
+                'train_': ClasswiseWrapper(
+                    F1Score(**metrics_args, average=None), labels=self.class_names
+                ),
+                'val_': ClasswiseWrapper(
+                    F1Score(**metrics_args, average=None), labels=self.class_names
+                ),
+            }
+        )
+
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes, normalize='true')
+        self.metrics['confusion'] = torch.nn.ModuleDict(
+            {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
+        )
+
+        # These can be overriden to represent class frequencies by using the ClassWeightsCallback
+        self.class_weights = torch.ones(self.num_classes)
 
     def training_step(self, batch, batch_idx):
         x, labels = batch  # labels shape (batch_size, X, Y)
-        preds = self.model(x)  # (batch_size, C, X, Y)
+        preds = self.network(x)  # (batch_size, C, X, Y)
 
         loss = self.compute_loss(preds, labels)
         self.log("train/loss", loss)
 
-        self.train_acc(preds, labels)
-        self.log("train/acc", self.train_acc, on_step=True, on_epoch=False)
+        self.compute_metrics(preds, labels, mode="train_")
 
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, labels = batch
-        preds = self.model(x)
+        preds = self.network(x)
 
         loss = self.compute_loss(preds, labels)
-
         self.log("val/loss", loss)
 
-        self.val_acc(preds, labels)
-        self.log("val/acc", self.val_acc, on_step=True, on_epoch=True)
+        self.compute_metrics(preds, labels, mode="val_")
 
     def compute_loss(self, preds, labels):
-        loss = F.cross_entropy(preds, labels)
-        return loss
+        return F.cross_entropy(preds, labels, weight=self.class_weights)
+
+    def compute_metrics(self, preds, labels, mode):
+        acc_overall = self.metrics['acc'][mode](preds, labels)
+        self.log(f"{mode[:-1]}/acc/all", self.metrics['acc'][mode], on_step=True, on_epoch=True)
+
+        self.metrics['f1'][mode](preds, labels)
+        self.log(f"{mode[:-1]}/f1", self.metrics['f1'][mode], on_step=True, on_epoch=True)
+
+        accs_per_class = self.metrics['acc_per_class'][mode](preds, labels)
+        accs_per_class = {
+            f"{mode[:-1]}/acc/{k.split('_')[1]}": v for k, v in accs_per_class.items()
+        }
+        wandb.log(accs_per_class)
+
+        f1_per_class = self.metrics['f1_per_class'][mode](preds, labels)
+        f1_per_class = {f"{mode[:-1]}/f1/{k.split('_')[1]}": v for k, v in f1_per_class.items()}
+        wandb.log(f1_per_class)
+
+        if self.current_epoch % 100 == 0:
+            self.compute_confusion(preds, labels, mode)
+
+    def compute_confusion(self, preds, labels, mode):
+        confusion = self.metrics['confusion'][mode](preds, labels)
+
+        data = []
+        for i in range(self.num_classes):
+            for j in range(self.num_classes):
+                data.append([self.class_names[i], self.class_names[j], confusion[i, j].item()])
+
+        columns = ["Actual", "Predicted", "nPredictions"]
+        fields = {k: k for k in columns}
+        plot = wandb.plot_table(
+            "wandb/confusion_matrix/v1",
+            wandb.Table(columns=columns, data=data),
+            fields,
+            {"title": f"{mode[:-1]} epoch {self.current_epoch}"},
+        )
+        wandb.log({f"confusion/{mode[:-1]}": plot})
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())

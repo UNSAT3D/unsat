@@ -87,7 +87,7 @@ class XRayDataset(Dataset):
         labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]
 
         data = torch.from_numpy(data).type(torch.float32)
-        labels = torch.from_numpy(labels).type(torch.uint8)
+        labels = torch.from_numpy(labels).type(torch.long)
 
         data = data.unsqueeze(0)  # Add channel dimension
 

@@ -100,12 +100,15 @@ data:
   train_samples:
   - maize/coarse/loose
   - maize/fine/dense
+  - maize/fine/loose
+  - chickpea/fine/dense
+  - chickpea/fine/loose
   height_range:
-  - 1000
-  - 1100
+  - 200
+  - 1400
   train_day_range:
   - 0
-  - 1
+  - 6
   validation_split: 0.1
   seed: 42
   batch_size: 16

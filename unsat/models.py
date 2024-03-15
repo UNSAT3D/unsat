@@ -28,16 +28,17 @@ class UltraLocalModel(nn.Module):
         self.layers.append(nn.Linear(input_size, self.num_classes))
 
     def forward(self, x):
-        input_shape = x.shape  # (batch_size, X, Y)
+        input_shape = x.shape  # (batch_size, 1, X, Y)
         # Transform to a flattened shape of (batch_size, num_pixels=X*Y, 1)
         # Model will act only on the last axis, the channel axis of dimension 1
         x = x.reshape(x.shape[0], -1, 1)
         for layer in self.layers[:-1]:
             x = layer(x)
             x = torch.relu(x)
-        x = self.layers[-1](x)
-        out = torch.softmax(x, dim=-1)
-        out = out.transpose(1, 2)
+        out = self.layers[-1](x)  # (batch_size, num_pixels, C)
+
+        # reshape to have channels first
+        out = out.transpose(1, 2)  # (batch_size, C, num_pixels)
         out = out.reshape(input_shape[0], self.num_classes, *input_shape[2:])
         # output shape is now (batch_size, C, X, Y)
         return out
