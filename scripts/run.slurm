@@ -2,12 +2,16 @@
 # Script to run a fit job on the cluster
 # Usage: `sbatch run.slurm <lightning CLI options>`
 #
-# NOTE: Make sure to adjust the `--time` parameter to the expected runtime of your job
+# NOTE:
+# These settings are for minimal tests.
+# Make sure to adjust the `--time` parameter to the expected runtime of your job
+# Also be aware that the gpu_mig partition uses only half a GPU. If you get out of memory errors,
+# try the gpu partition instead.
 #
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=18
-#SBATCH --partition=gpu
+#SBATCH --cpus-per-task=9
+#SBATCH --partition=gpu_mig
 #SBATCH --gpus-per-node=1
 #SBATCH --time=00:10:00
 #SBATCH --output=logs_slurm/%j.out
