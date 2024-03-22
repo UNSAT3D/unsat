@@ -110,4 +110,5 @@ data:
   seed: 42
   batch_size: 16
   num_workers: 8
+  crop: false
 ckpt_path: null

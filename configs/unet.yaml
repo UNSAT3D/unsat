@@ -79,12 +79,15 @@ trainer:
   default_root_dir: null
 model:
   network:
-    class_path: unsat.models.UltraLocalModel
+    class_path: unsat.models.UNet
     init_args:
-      hidden_sizes:
-      - 10
-      - 10
+      input_channels: 1
+      start_channels: 2
+      num_blocks: 3
       num_classes: 5
+      kernel_size: 3
+      block_depth: 2
+      batch_norm: true
   optimizer:
     class_path: torch.optim.Adam
     init_args:
@@ -100,18 +103,15 @@ data:
   train_samples:
   - maize/coarse/loose
   - maize/fine/dense
-  - maize/fine/loose
-  - chickpea/fine/dense
-  - chickpea/fine/loose
   height_range:
-  - 200
-  - 1400
+  - 1000
+  - 1100
   train_day_range:
   - 0
-  - 6
+  - 1
   validation_split: 0.1
   seed: 42
   batch_size: 16
   num_workers: 8
-  crop: false
+  crop: true
 ckpt_path: null

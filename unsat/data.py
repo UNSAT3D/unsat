@@ -56,13 +56,15 @@ class XRayDataset(Dataset):
         hdf5_path: path to hdf5 file containing all data
         data_selection: DataSelection object expressing which subset of data to use
         name: name of dataset (train/validation/test)
+        crop: whether to crop the data to the nearest power of 2
     """
 
-    def __init__(self, hdf5_path: str, data_selection: DataSelection, name: str):
+    def __init__(self, hdf5_path: str, data_selection: DataSelection, name: str, crop: bool):
         self.name = name
         self.hdf5_path = hdf5_path
         self.hdf5_file = None  # Has to be opened in __getitem__ to be picklable
         self.selection = data_selection
+        self.crop = crop
 
     def __len__(self):
         return self.selection.num_points
@@ -85,6 +87,14 @@ class XRayDataset(Dataset):
 
         data = self.hdf5_file[sample_name]['data'][day_idx, height_idx]
         labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]
+
+        # reduce spatial dimensions to nearest power of 2, cropping around the center
+        if self.crop:
+            init_size = data.shape[0]
+            final_size = 2 ** int(np.log2(init_size))
+            start = (init_size - final_size) // 2
+            data = data[start : start + final_size, start : start + final_size]
+            labels = labels[start : start + final_size, start : start + final_size]
 
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
@@ -116,6 +126,7 @@ class XRayDataModule(L.LightningDataModule):
         batch_size: batch size for dataloaders
         seed: random seed for splitting data
         num_workers: number of parallel workers for dataloaders
+        crop: whether to crop the data to the nearest power of 2
     """
 
     def __init__(
@@ -128,6 +139,7 @@ class XRayDataModule(L.LightningDataModule):
         batch_size: int,
         seed: int,
         num_workers: int,
+        crop: bool = False,
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -138,6 +150,7 @@ class XRayDataModule(L.LightningDataModule):
         self.seed = seed
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.crop = crop
 
         self.dataloaders = {}
 
@@ -149,7 +162,10 @@ class XRayDataModule(L.LightningDataModule):
             day_range=self.train_day_range,
         )
         train_val_dataset = XRayDataset(
-            hdf5_path=self.hdf5_path, data_selection=train_val_selection, name='train_val'
+            hdf5_path=self.hdf5_path,
+            data_selection=train_val_selection,
+            name='train_val',
+            crop=self.crop,
         )
 
         # split train/val randomly
@@ -176,7 +192,10 @@ class XRayDataModule(L.LightningDataModule):
             sample_list=test_samples, height_range=self.height_range, day_range=test_day_range
         )
         datasets['test_strict'] = XRayDataset(
-            hdf5_path=self.hdf5_path, data_selection=strict_test_selection, name='test_strict'
+            hdf5_path=self.hdf5_path,
+            data_selection=strict_test_selection,
+            name='test_strict',
+            crop=self.crop,
         )
 
         # The test set that has overlaps in either samples or days
@@ -187,6 +206,7 @@ class XRayDataModule(L.LightningDataModule):
             hdf5_path=self.hdf5_path,
             data_selection=overlap_test_selection_same_days,
             name='test_overlap_same_days',
+            crop=self.crop,
         )
         overlap_test_selection_same_samples = DataSelection(
             sample_list=self.train_samples, height_range=self.height_range, day_range=test_day_range
@@ -195,6 +215,7 @@ class XRayDataModule(L.LightningDataModule):
             hdf5_path=self.hdf5_path,
             data_selection=overlap_test_selection_same_samples,
             name='test_overlap_same_samples',
+            crop=self.crop,
         )
 
         datasets['test_overlap'] = ConcatDataset(
