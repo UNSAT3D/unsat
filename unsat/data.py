@@ -21,11 +21,13 @@ class DataSelection:
         sample_list: list of sample names to use
         height_range: tuple of (min, max) height indices to use
         day_range: tuple of (min, max) day indices to use
+        dimension: number of spatial dimensions (2 or 3)
     """
 
     sample_list: List[str]
     height_range: Tuple[int, int]
     day_range: Tuple[int, int]
+    dimension: int
 
     @property
     def num_samples(self):
@@ -41,7 +43,10 @@ class DataSelection:
 
     @property
     def points_per_sample(self):
-        return self.num_heights * self.num_days
+        if self.dimension == 2:
+            return self.num_heights * self.num_days
+        else:
+            return self.num_days
 
     @property
     def num_points(self):
@@ -59,6 +64,7 @@ class XRayDataset(Dataset):
         patch_size (tuple): size of the patch to extract
         patch_border (tuple): size of the border of a patch to exclude from the loss
         shuffle: whether to shuffle the patch
+        dimension: number of spatial dimensions (2 or 3)
     """
 
     def __init__(
@@ -68,6 +74,7 @@ class XRayDataset(Dataset):
         name: str,
         patch_size: Optional[Tuple[int, ...]],
         patch_border: Optional[Tuple[int, ...]],
+        dimension: int,
         shuffle: bool = True,
     ):
         self.name = name
@@ -77,7 +84,7 @@ class XRayDataset(Dataset):
         self.patch_size = patch_size
         self.patch_border = patch_border
         self.shuffle = True
-        self.dimension = 2
+        self.dimension = dimension
 
     def __len__(self):
         return self.selection.num_points
@@ -98,10 +105,14 @@ class XRayDataset(Dataset):
         day_idx += self.selection.day_range[0]
         height_idx += self.selection.height_range[0]
 
-        data = self.hdf5_file[sample_name]['data'][day_idx, height_idx]
-        labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]
+        data = self.hdf5_file[sample_name]['data'][day_idx]
+        labels = self.hdf5_file[sample_name]['labels'][day_idx]
+        if self.dimension == 2:
+            data = data[height_idx]
+            labels = labels[height_idx]
 
         # Extract a patch if specified
+        init_shape = data.shape
         patch_starts = []
         if self.patch_size is not None:
             init_shape = data.shape
@@ -119,7 +130,7 @@ class XRayDataset(Dataset):
 
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
-        mask = self.compute_border_mask(data.shape, patch_starts)
+        mask = self.compute_border_mask(init_shape, patch_starts)
         # if mask is not None:
         # mask = torch.from_numpy(mask).type(torch.float32)
 
@@ -187,6 +198,7 @@ class XRayDataModule(L.LightningDataModule):
         seed: random seed for splitting data
         num_workers: number of parallel workers for dataloaders
         patch_size (tuple): size of the patch to extract
+        dimension: number of spatial dimensions (2 or 3)
     """
 
     def __init__(
@@ -201,6 +213,7 @@ class XRayDataModule(L.LightningDataModule):
         num_workers: int,
         patch_size: Optional[Tuple[int, ...]],
         patch_border: Optional[Tuple[int, ...]],
+        dimension: int,
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -211,25 +224,26 @@ class XRayDataModule(L.LightningDataModule):
         self.seed = seed
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.patch_size = patch_size
-        self.patch_border = patch_border
+        self.dimension = dimension
+        self.dataset_kwargs = {
+            'hdf5_path': hdf5_path,
+            'patch_size': patch_size,
+            'patch_border': patch_border,
+            'dimension': dimension,
+        }
 
         self.dataloaders = {}
 
     def prepare_data(self):
         datasets = {}
-        dataset_kwargs = {
-            'hdf5_path': self.hdf5_path,
-            'patch_size': self.patch_size,
-            'patch_border': self.patch_border,
-        }
         train_val_selection = DataSelection(
             sample_list=self.train_samples,
             height_range=self.height_range,
             day_range=self.train_day_range,
+            dimension=self.dimension,
         )
         train_val_dataset = XRayDataset(
-            data_selection=train_val_selection, name='train_val', **dataset_kwargs
+            data_selection=train_val_selection, name='train_val', **self.dataset_kwargs
         )
 
         # split train/val randomly
@@ -253,28 +267,37 @@ class XRayDataModule(L.LightningDataModule):
 
         # The test set that has no overlaps in either samples or days
         strict_test_selection = DataSelection(
-            sample_list=test_samples, height_range=self.height_range, day_range=test_day_range
+            sample_list=test_samples,
+            height_range=self.height_range,
+            day_range=test_day_range,
+            dimension=self.dimension,
         )
         datasets['test_strict'] = XRayDataset(
-            data_selection=strict_test_selection, name='test_strict', **dataset_kwargs
+            data_selection=strict_test_selection, name='test_strict', **self.dataset_kwargs
         )
 
         # The test set that has overlaps in either samples or days
         overlap_test_selection_same_days = DataSelection(
-            sample_list=test_samples, height_range=self.height_range, day_range=self.train_day_range
+            sample_list=test_samples,
+            height_range=self.height_range,
+            day_range=self.train_day_range,
+            dimension=self.dimension,
         )
         overlap_test_dataset_same_days = XRayDataset(
             data_selection=overlap_test_selection_same_days,
             name='test_overlap_same_days',
-            **dataset_kwargs,
+            **self.dataset_kwargs,
         )
         overlap_test_selection_same_samples = DataSelection(
-            sample_list=self.train_samples, height_range=self.height_range, day_range=test_day_range
+            sample_list=self.train_samples,
+            height_range=self.height_range,
+            day_range=test_day_range,
+            dimension=self.dimension,
         )
         overlap_test_dataset_same_samples = XRayDataset(
             data_selection=overlap_test_selection_same_samples,
             name='test_overlap_same_samples',
-            **dataset_kwargs,
+            **self.dataset_kwargs,
         )
 
         datasets['test_overlap'] = ConcatDataset(

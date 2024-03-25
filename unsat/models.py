@@ -63,6 +63,8 @@ class UNet(nn.Module):
             Whether to use batch normalization.
         num_classes (int):
             The number of classes to predict.
+        dimension (int):
+            The number of spatial dimension (2 or 3).
     """
 
     def __init__(
@@ -74,13 +76,30 @@ class UNet(nn.Module):
         kernel_size: int,
         batch_norm: bool,
         num_classes: int,
+        dimension: int,
     ):
         super().__init__()
+        self.dimension = dimension
 
-        self.maxpool = nn.MaxPool2d(kernel_size=2)
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear')
+        if dimension == 2:
+            self.maxpool = nn.MaxPool2d(kernel_size=2)
+        elif dimension == 3:
+            self.maxpool = nn.MaxPool3d(kernel_size=2)
+        else:
+            raise ValueError(
+                f"Only 2D and 3D convolutions are supported (got dimension={dimension})"
+            )
 
-        kwargs = {'batch_norm': batch_norm, 'kernel_size': kernel_size, 'depth': block_depth}
+        self.upsample = nn.Upsample(
+            scale_factor=2, mode='bilinear' if dimension == 2 else 'trilinear'
+        )
+
+        kwargs = {
+            'batch_norm': batch_norm,
+            'kernel_size': kernel_size,
+            'depth': block_depth,
+            'dimension': dimension,
+        }
         self.start = ConvBlock(in_channels=input_channels, out_channels=start_channels, **kwargs)
         self.encoder_blocks = nn.ModuleList()
         encoder_channels = [start_channels * 2**i for i in range(num_blocks)]
@@ -95,7 +114,8 @@ class UNet(nn.Module):
             )
             self.decoder_blocks.append(decoder_block)
 
-        self.final = nn.Conv2d(kernel_size=1, in_channels=start_channels, out_channels=num_classes)
+        conv_layer = nn.Conv2d if dimension == 2 else nn.Conv3d
+        self.final = conv_layer(kernel_size=1, in_channels=start_channels, out_channels=num_classes)
 
     def forward(self, x):
         x = self.start(x)
@@ -113,20 +133,28 @@ class UNet(nn.Module):
 
 class ConvBlock(nn.Module):
     def __init__(
-        self, in_channels: int, out_channels: int, depth: int, kernel_size: int, batch_norm: bool
+        self,
+        in_channels: int,
+        out_channels: int,
+        depth: int,
+        kernel_size: int,
+        batch_norm: bool,
+        dimension: int,
     ):
         super().__init__()
         self.conv_layers = nn.ModuleList()
         self.bn_layers = nn.ModuleList()
         self.relu = nn.ReLU()
         self.batch_norm = batch_norm
+        conv_layer = nn.Conv2d if dimension == 2 else nn.Conv3d
+        bn_layer = nn.BatchNorm2d if dimension == 2 else nn.BatchNorm3d
 
         for i in range(depth):
             self.conv_layers.append(
-                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding='same')
+                conv_layer(in_channels, out_channels, kernel_size=kernel_size, padding='same')
             )
             if self.batch_norm:
-                self.bn_layers.append(nn.BatchNorm2d(out_channels))
+                self.bn_layers.append(bn_layer(out_channels))
             in_channels = out_channels
 
     def forward(self, x):
