@@ -154,3 +154,14 @@ class WandbSaveConfigCallback(SaveConfigCallback):
             multifile=self.multifile,
         )
         logger.experiment.config['lightning_config'] = self.config
+
+        # save model config separately
+        model_name = self.config.model.network.class_path.split('.')[-1]
+        logger.experiment.config['model'] = model_name
+        for name, val in self.config.model.network.init_args.items():
+            logger.experiment.config[name] = val
+        optimizer_name = self.config.model.optimizer.class_path.split('.')[-1]
+        logger.experiment.config['optimizer'] = optimizer_name
+        logger.experiment.config['lr'] = self.config.model.optimizer.init_args.lr
+        for name, val in self.config.model.optimizer.init_args.items():
+            logger.experiment.config[f"opt/{name}"] = val
