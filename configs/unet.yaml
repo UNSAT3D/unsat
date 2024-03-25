@@ -113,5 +113,7 @@ data:
   seed: 42
   batch_size: 16
   num_workers: 8
-  crop: true
+  patch_size:
+  - 512
+  - 512
 ckpt_path: null
