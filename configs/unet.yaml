@@ -116,4 +116,7 @@ data:
   patch_size:
   - 512
   - 512
+  patch_border:
+  - 10
+  - 10
 ckpt_path: null

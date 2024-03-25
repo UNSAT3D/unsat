@@ -3,7 +3,7 @@ Classes for creating torch dataloaders
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import h5py
 import lightning as L
@@ -57,17 +57,25 @@ class XRayDataset(Dataset):
         data_selection: DataSelection object expressing which subset of data to use
         name: name of dataset (train/validation/test)
         patch_size (tuple): size of the patch to extract
+        patch_border (tuple): size of the border of a patch to exclude from the loss
         shuffle: whether to shuffle the patch
     """
 
     def __init__(
-        self, hdf5_path: str, data_selection: DataSelection, name: str, patch_size: Tuple[int, int]
+        self,
+        hdf5_path: str,
+        data_selection: DataSelection,
+        name: str,
+        patch_size: Optional[Tuple[int, ...]],
+        patch_border: Optional[Tuple[int, ...]],
+        shuffle: bool = True,
     ):
         self.name = name
         self.hdf5_path = hdf5_path
         self.hdf5_file = None  # Has to be opened in __getitem__ to be picklable
         self.selection = data_selection
         self.patch_size = patch_size
+        self.patch_border = patch_border
         self.shuffle = True
         self.dimension = 2
 
@@ -94,26 +102,66 @@ class XRayDataset(Dataset):
         labels = self.hdf5_file[sample_name]['labels'][day_idx, height_idx]
 
         # Extract a patch if specified
+        patch_starts = []
         if self.patch_size is not None:
-            init_size = data.shape
-            max_starts = [init_size[i] - self.patch_size[i] for i in range(self.dimension)]
+            init_shape = data.shape
+            max_starts = [init_shape[i] - self.patch_size[i] for i in range(self.dimension)]
             if self.shuffle:
-                starts = [np.random.randint(0, max_starts[i]) for i in range(self.dimension)]
+                patch_starts = [np.random.randint(0, max_starts[i]) for i in range(self.dimension)]
             else:
-                starts = [max_starts[i] // 2 for i in range(self.dimension)]
+                patch_starts = [max_starts[i] // 2 for i in range(self.dimension)]
 
             slices = tuple(
-                slice(start, start + size) for start, size in zip(starts, self.patch_size)
+                slice(start, start + size) for start, size in zip(patch_starts, self.patch_size)
             )
             data = data[slices]
             labels = labels[slices]
 
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
+        mask = self.compute_border_mask(data.shape, patch_starts)
+        # if mask is not None:
+        # mask = torch.from_numpy(mask).type(torch.float32)
 
         data = data.unsqueeze(0)  # Add channel dimension
 
-        return data, labels
+        return data, labels, mask
+
+    def compute_border_mask(self, init_shape, patch_starts):
+        """
+        Compute a mask to exclude the border of the patch in the loss.
+        The model doesn't have full context to make a prediction there.
+
+        Args:
+            init_shape: shape of the original data
+            patch_starts: starting indices of the patch in the original data
+
+        Returns:
+            bool tensor of the same shape as the original data, with False for the pixels to be masked
+        """
+        if not self.patch_size:
+            return torch.full(init_shape, True)
+
+        if not self.patch_border:
+            return torch.full(self.patch_size, True)
+
+        mask = torch.full(self.patch_size, False)
+        slices = []
+        for i in range(self.dimension):
+            start = self.patch_border[i]
+            if self.patch_border[i] > patch_starts[i]:
+                # If the border wouldn't be taken into account by any other patch, keep it
+                start -= patch_starts[i]
+            end = self.patch_border[i]
+            if self.patch_border[i] > (init_shape[i] - (patch_starts[i] + self.patch_size[i])):
+                # If the border wouldn't be taken into account by any other patch, keep it
+                end -= init_shape[i] - (patch_starts[i] + self.patch_size[i])
+            end = self.patch_size[i] - end
+            slices.append(slice(start, end))
+            # slices.append((start, end))
+        slices = tuple(slices)
+        mask[slices] = True
+        return mask
 
 
 class XRayDataModule(L.LightningDataModule):
@@ -151,7 +199,8 @@ class XRayDataModule(L.LightningDataModule):
         batch_size: int,
         seed: int,
         num_workers: int,
-        patch_size: Tuple[int, int],
+        patch_size: Optional[Tuple[int, ...]],
+        patch_border: Optional[Tuple[int, ...]],
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -163,21 +212,24 @@ class XRayDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.patch_size = patch_size
+        self.patch_border = patch_border
 
         self.dataloaders = {}
 
     def prepare_data(self):
         datasets = {}
+        dataset_kwargs = {
+            'hdf5_path': self.hdf5_path,
+            'patch_size': self.patch_size,
+            'patch_border': self.patch_border,
+        }
         train_val_selection = DataSelection(
             sample_list=self.train_samples,
             height_range=self.height_range,
             day_range=self.train_day_range,
         )
         train_val_dataset = XRayDataset(
-            hdf5_path=self.hdf5_path,
-            data_selection=train_val_selection,
-            name='train_val',
-            patch_size=self.patch_size,
+            data_selection=train_val_selection, name='train_val', **dataset_kwargs
         )
 
         # split train/val randomly
@@ -204,10 +256,7 @@ class XRayDataModule(L.LightningDataModule):
             sample_list=test_samples, height_range=self.height_range, day_range=test_day_range
         )
         datasets['test_strict'] = XRayDataset(
-            hdf5_path=self.hdf5_path,
-            data_selection=strict_test_selection,
-            name='test_strict',
-            patch_size=self.patch_size,
+            data_selection=strict_test_selection, name='test_strict', **dataset_kwargs
         )
 
         # The test set that has overlaps in either samples or days
@@ -215,19 +264,17 @@ class XRayDataModule(L.LightningDataModule):
             sample_list=test_samples, height_range=self.height_range, day_range=self.train_day_range
         )
         overlap_test_dataset_same_days = XRayDataset(
-            hdf5_path=self.hdf5_path,
             data_selection=overlap_test_selection_same_days,
             name='test_overlap_same_days',
-            patch_size=self.patch_size,
+            **dataset_kwargs,
         )
         overlap_test_selection_same_samples = DataSelection(
             sample_list=self.train_samples, height_range=self.height_range, day_range=test_day_range
         )
         overlap_test_dataset_same_samples = XRayDataset(
-            hdf5_path=self.hdf5_path,
             data_selection=overlap_test_selection_same_samples,
             name='test_overlap_same_samples',
-            patch_size=self.patch_size,
+            **dataset_kwargs,
         )
 
         datasets['test_overlap'] = ConcatDataset(

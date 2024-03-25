@@ -17,7 +17,7 @@ class ClassWeightsCallback(Callback):
     def on_fit_start(self, trainer, pl_module):
         train_dataloader = trainer.datamodule.dataloaders['train']
         class_counts = torch.zeros(pl_module.num_classes)
-        for _, labels in train_dataloader:
+        for _, labels, _ in train_dataloader:
             # labels is a high rank tensor with integer entries between 1 and pl_module.num_classes
             counts = torch.bincount(labels.flatten(), minlength=pl_module.num_classes)
             class_counts += counts

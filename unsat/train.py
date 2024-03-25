@@ -20,6 +20,7 @@ class LightningTrainer(L.LightningModule):
             class_names (List[str]):
                 The names of the classes.
         """
+        torch.autograd.set_detect_anomaly(True)
         super().__init__()
         self.optimizer = optimizer
         self.network = network
@@ -27,7 +28,7 @@ class LightningTrainer(L.LightningModule):
         self.class_names = class_names
         self.num_classes = len(class_names)
 
-        metrics_args = dict(task="multiclass", num_classes=self.num_classes)
+        metrics_args = dict(task="multiclass", num_classes=self.num_classes, ignore_index=-1)
         self.metrics = torch.nn.ModuleDict()
         self.metrics['acc'] = torch.nn.ModuleDict(
             {
@@ -71,47 +72,53 @@ class LightningTrainer(L.LightningModule):
         self.class_weights = torch.ones(self.num_classes)
 
     def training_step(self, batch, batch_idx):
-        x, labels = batch  # labels shape (batch_size, X, Y)
+        x, labels, mask = batch  # labels shape (batch_size, X, Y)
         preds = self.network(x)  # (batch_size, C, X, Y)
 
-        loss = self.compute_loss(preds, labels)
+        loss = self.compute_loss(preds, labels, mask)
         self.log("train/loss", loss)
 
-        self.compute_metrics(preds, labels, mode="train_")
+        self.compute_metrics(preds, labels, mask, mode="train_")
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, labels = batch
+        x, labels, mask = batch
         preds = self.network(x)
 
-        loss = self.compute_loss(preds, labels)
+        loss = self.compute_loss(preds, labels, mask)
         self.log("val/loss", loss)
 
-        self.compute_metrics(preds, labels, mode="val_")
+        self.compute_metrics(preds, labels, mask, mode="val_")
 
-    def compute_loss(self, preds, labels):
-        return F.cross_entropy(preds, labels, weight=self.class_weights)
+    def compute_loss(self, preds, labels, mask):
+        per_pixel_losses = F.cross_entropy(
+            preds, labels, weight=self.class_weights, reduction='none'
+        )
+        per_pixel_losses = per_pixel_losses * mask
+        loss = per_pixel_losses.sum() / mask.sum()
+        return loss
 
-    def compute_metrics(self, preds, labels, mode):
-        acc_overall = self.metrics['acc'][mode](preds, labels)
+    def compute_metrics(self, preds, labels, mask, mode):
+        masked_labels = torch.where(mask, labels, -1)
+        acc_overall = self.metrics['acc'][mode](preds, masked_labels)
         self.log(f"{mode[:-1]}/acc/all", self.metrics['acc'][mode], on_step=True, on_epoch=True)
 
-        self.metrics['f1'][mode](preds, labels)
+        self.metrics['f1'][mode](preds, masked_labels)
         self.log(f"{mode[:-1]}/f1", self.metrics['f1'][mode], on_step=True, on_epoch=True)
 
-        accs_per_class = self.metrics['acc_per_class'][mode](preds, labels)
+        accs_per_class = self.metrics['acc_per_class'][mode](preds, masked_labels)
         accs_per_class = {
             f"{mode[:-1]}/acc/{k.split('_')[1]}": v for k, v in accs_per_class.items()
         }
         wandb.log(accs_per_class)
 
-        f1_per_class = self.metrics['f1_per_class'][mode](preds, labels)
+        f1_per_class = self.metrics['f1_per_class'][mode](preds, masked_labels)
         f1_per_class = {f"{mode[:-1]}/f1/{k.split('_')[1]}": v for k, v in f1_per_class.items()}
         wandb.log(f1_per_class)
 
         if self.current_epoch % 100 == 0:
-            self.compute_confusion(preds, labels, mode)
+            self.compute_confusion(preds, masked_labels, mode)
 
     def compute_confusion(self, preds, labels, mode):
         confusion = self.metrics['confusion'][mode](preds, labels)
