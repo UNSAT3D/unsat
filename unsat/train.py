@@ -63,7 +63,7 @@ class LightningTrainer(L.LightningModule):
             }
         )
 
-        metrics_args = dict(task="multiclass", num_classes=self.num_classes, normalize='true')
+        metrics_args['normalize'] = 'true'
         self.metrics['confusion'] = torch.nn.ModuleDict(
             {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
         )
@@ -100,12 +100,7 @@ class LightningTrainer(L.LightningModule):
         return loss
 
     def compute_metrics(self, preds, labels, mask, mode):
-        # for 3 dimensions, join height axis with batch axis
-        if self.network.dimension == 3:
-            preds = merge_height_batch(preds)
-            labels = merge_height_batch(labels)
-            mask = merge_height_batch(mask)
-
+        # Replace patch border, if set, with -1 in labels.
         masked_labels = torch.where(mask, labels, -1)
 
         acc_overall = self.metrics['acc'][mode](preds, masked_labels)
@@ -148,13 +143,6 @@ class LightningTrainer(L.LightningModule):
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())
         return optimizer
-
-
-def merge_height_batch(x):
-    """Merge the height axis with the batch axis."""
-    x = torch.moveaxis(x, -1, 0)
-    x = x.reshape(-1, *x.shape[2:])
-    return x
 
 
 class WandbSaveConfigCallback(SaveConfigCallback):
