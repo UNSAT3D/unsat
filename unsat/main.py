@@ -3,6 +3,13 @@ from lightning.pytorch.cli import LightningCLI
 from train import LightningTrainer, WandbSaveConfigCallback
 
 
+class MyLightningCLI(LightningCLI):
+    def add_arguments_to_parser(self, parser):
+        parser.link_arguments("data.class_names", "model.class_names")
+        parser.link_arguments("data.dimension", "model.dimension")
+        parser.link_arguments("data.input_channels", "model.input_channels")
+
+
 def cli_main():
     """
     Standard lightning CLI definition, with added callback to save the lightning config to wandb.
@@ -10,7 +17,7 @@ def cli_main():
     Usage e.g.: python main.py fit -c config.yaml
     See also https://lightning.ai/docs/pytorch/stable/cli/lightning_cli_intermediate.html
     """
-    cli = LightningCLI(
+    cli = MyLightningCLI(
         model_class=LightningTrainer,
         datamodule_class=XRayDataModule,
         save_config_callback=WandbSaveConfigCallback,

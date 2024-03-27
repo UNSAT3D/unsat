@@ -214,6 +214,8 @@ class XRayDataModule(L.LightningDataModule):
         seed: random seed for splitting data
         num_workers: number of parallel workers for dataloaders
         dimension: number of spatial dimensions (2 or 3)
+        class_names: list of class names
+        input_channels: number of input channels
         patch_size: size of the patch to extract
         patch_border: size of the border of a patch to exclude from the loss
     """
@@ -229,6 +231,8 @@ class XRayDataModule(L.LightningDataModule):
         seed: int,
         num_workers: int,
         dimension: int,
+        class_names: List[str],
+        input_channels: int,
         patch_size: Optional[Union[int, Tuple[int, ...]]] = None,
         patch_border: Optional[Union[int, Tuple[int, ...]]] = None,
     ):
@@ -242,6 +246,8 @@ class XRayDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dimension = dimension
+        self.class_names = class_names
+        self.input_channels = input_channels
         patch_size = (patch_size,) * dimension if isinstance(patch_size, int) else patch_size
         patch_border = (
             (patch_border,) * dimension if isinstance(patch_border, int) else patch_border

@@ -10,7 +10,15 @@ import wandb
 
 
 class LightningTrainer(L.LightningModule):
-    def __init__(self, network, class_names, optimizer: OptimizerCallable, **kwargs):
+    def __init__(
+        self,
+        network,
+        class_names,
+        dimension,
+        input_channels,
+        optimizer: OptimizerCallable,
+        **kwargs,
+    ):
         """
         Lightning module defining the network and the training loop.
 
@@ -19,14 +27,23 @@ class LightningTrainer(L.LightningModule):
                 The network to train.
             class_names (List[str]):
                 The names of the classes.
+            dimension (int):
+                The number of spatial dimensions.
+            input_channels (int):
+                The number of input channels.
         """
         torch.autograd.set_detect_anomaly(True)
         super().__init__()
         self.optimizer = optimizer
-        self.network = network
 
         self.class_names = class_names
         self.num_classes = len(class_names)
+
+        self.network = network
+        self.network.dimension = dimension
+        self.network.num_classes = self.num_classes
+        self.network.input_channels = input_channels
+        self.network.build()
 
         metrics_args = dict(task="multiclass", num_classes=self.num_classes, ignore_index=-1)
         self.metrics = torch.nn.ModuleDict()

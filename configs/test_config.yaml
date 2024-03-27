@@ -84,19 +84,19 @@ model:
       hidden_sizes:
       - 10
       - 10
-      num_classes: 5
   optimizer:
     class_path: torch.optim.Adam
     init_args:
       lr: 3e-3
+data:
+  hdf5_path: /projects/0/einf3381/UNSAT/data/experimental.h5
   class_names:
   - "water"
   - "background"
   - "air"
   - "root"
   - "soil"
-data:
-  hdf5_path: /projects/0/einf3381/UNSAT/data/experimental.h5
+  input_channels: 1
   train_samples:
   - maize/coarse/loose
   - maize/fine/dense

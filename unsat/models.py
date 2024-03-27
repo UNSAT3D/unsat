@@ -13,19 +13,34 @@ class UltraLocalModel(nn.Module):
             The number of hidden units in each layer.
         num_classes (int):
             The number of classes to predict.
+        input_channels (int):
+            The number of input channels.
     """
 
-    def __init__(self, hidden_sizes: List[int], num_classes: int, activation: str = 'relu'):
+    def __init__(
+        self,
+        hidden_sizes: List[int],
+        num_classes: int = None,
+        input_channels: int = None,
+        activation: str = 'relu',
+    ):
         super().__init__()
-        input_size = 1
-        self.num_classes = num_classes
         self.hidden_sizes = hidden_sizes
+        # If None these will be set in the lightning module
+        self.input_channels = input_channels
+        self.num_classes = num_classes
 
+        # So that the model can still be initialized directly if everything is specified:
+        if input_channels is not None and num_classes is not None:
+            self.build()
+
+    def build(self):
         self.layers = nn.ModuleList()
-        for i, hidden_size in enumerate(hidden_sizes):
-            self.layers.append(nn.Linear(input_size, hidden_size))
-            input_size = hidden_size
-        self.layers.append(nn.Linear(input_size, self.num_classes))
+        in_channels = self.input_channels
+        for i, out_channels in enumerate(self.hidden_sizes):
+            self.layers.append(nn.Linear(in_channels, out_channels))
+            in_channels = out_channels
+        self.layers.append(nn.Linear(in_channels, self.num_classes))
 
     def forward(self, x):
         input_shape = x.shape  # (batch_size, 1, X, Y)
@@ -49,8 +64,6 @@ class UNet(nn.Module):
     A simple U-Net model for semantic segmentation.
 
     Args:
-        input_channels (int):
-            The number of input channels.
         start_channels (int):
             The number of channels in the first layer.
         num_blocks (int):
@@ -61,61 +74,81 @@ class UNet(nn.Module):
             The size of the convolutional kernel.
         batch_norm (bool):
             Whether to use batch normalization.
-        num_classes (int):
-            The number of classes to predict.
+        input_channels (int):
+            The number of input channels.
         dimension (int):
             The number of spatial dimension (2 or 3).
+        num_classes (int):
+            The number of classes to predict.
     """
 
     def __init__(
         self,
-        input_channels: int,
         start_channels: int,
         num_blocks: int,
         block_depth: int,
         kernel_size: int,
         batch_norm: bool,
-        num_classes: int,
-        dimension: int,
+        input_channels: int = None,
+        dimension: int = None,
+        num_classes: int = None,
     ):
         super().__init__()
-        self.dimension = dimension
-
-        if dimension == 2:
-            self.maxpool = nn.MaxPool2d(kernel_size=2)
-        elif dimension == 3:
-            self.maxpool = nn.MaxPool3d(kernel_size=2)
-        else:
-            raise ValueError(
-                f"Only 2D and 3D convolutions are supported (got dimension={dimension})"
-            )
-
-        self.upsample = nn.Upsample(
-            scale_factor=2, mode='bilinear' if dimension == 2 else 'trilinear'
-        )
-
-        kwargs = {
+        self.start_channels = start_channels
+        self.num_blocks = num_blocks
+        self.conv_kwargs = {
             'batch_norm': batch_norm,
             'kernel_size': kernel_size,
             'depth': block_depth,
-            'dimension': dimension,
         }
-        self.start = ConvBlock(in_channels=input_channels, out_channels=start_channels, **kwargs)
+        # If None these will be set in the lightning module
+        self.dimension = dimension
+        self.num_classes = num_classes
+        self.input_channels = input_channels
+
+        # So that the model can still be initialized directly if everything is specified:
+        if input_channels is not None and num_classes is not None:
+            self.build()
+
+    def build(self):
+        if self.dimension == 2:
+            self.maxpool = nn.MaxPool2d(kernel_size=2)
+        elif self.dimension == 3:
+            self.maxpool = nn.MaxPool3d(kernel_size=2)
+        else:
+            raise ValueError(
+                f"Only 2D and 3D convolutions are supported (got dimension={self.dimension})"
+            )
+
+        self.upsample = nn.Upsample(
+            scale_factor=2, mode='bilinear' if self.dimension == 2 else 'trilinear'
+        )
+
+        self.conv_kwargs['dimension'] = self.dimension
+        self.start = ConvBlock(
+            in_channels=self.input_channels, out_channels=self.start_channels, **self.conv_kwargs
+        )
         self.encoder_blocks = nn.ModuleList()
-        encoder_channels = [start_channels * 2**i for i in range(num_blocks)]
-        for i in range(1, num_blocks):
-            encoder_block = ConvBlock(encoder_channels[i - 1], encoder_channels[i], **kwargs)
+        encoder_channels = [self.start_channels * 2**i for i in range(self.num_blocks)]
+        for i in range(1, self.num_blocks):
+            encoder_block = ConvBlock(
+                encoder_channels[i - 1], encoder_channels[i], **self.conv_kwargs
+            )
             self.encoder_blocks.append(encoder_block)
 
         self.decoder_blocks = nn.ModuleList()
-        for i in reversed(range(num_blocks - 1)):
+        for i in reversed(range(self.num_blocks - 1)):
             decoder_block = ConvBlock(
-                encoder_channels[i] + encoder_channels[i + 1], encoder_channels[i], **kwargs
+                encoder_channels[i] + encoder_channels[i + 1],
+                encoder_channels[i],
+                **self.conv_kwargs,
             )
             self.decoder_blocks.append(decoder_block)
 
-        conv_layer = nn.Conv2d if dimension == 2 else nn.Conv3d
-        self.final = conv_layer(kernel_size=1, in_channels=start_channels, out_channels=num_classes)
+        conv_layer = nn.Conv2d if self.dimension == 2 else nn.Conv3d
+        self.final = conv_layer(
+            kernel_size=1, in_channels=self.start_channels, out_channels=self.num_classes
+        )
 
     def forward(self, x):
         x = self.start(x)
