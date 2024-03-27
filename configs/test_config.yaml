@@ -108,6 +108,7 @@ data:
   - 1
   validation_split: 0.1
   seed: 42
-  batch_size: 16
+  batch_size: 2
   num_workers: 8
+  dimension: 2
 ckpt_path: null

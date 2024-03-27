@@ -3,7 +3,7 @@ Classes for creating torch dataloaders
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import h5py
 import lightning as L
@@ -197,8 +197,9 @@ class XRayDataModule(L.LightningDataModule):
         batch_size: batch size for dataloaders
         seed: random seed for splitting data
         num_workers: number of parallel workers for dataloaders
-        patch_size (tuple): size of the patch to extract
         dimension: number of spatial dimensions (2 or 3)
+        patch_size: size of the patch to extract
+        patch_border: size of the border of a patch to exclude from the loss
     """
 
     def __init__(
@@ -211,9 +212,9 @@ class XRayDataModule(L.LightningDataModule):
         batch_size: int,
         seed: int,
         num_workers: int,
-        patch_size: Optional[Tuple[int, ...]],
-        patch_border: Optional[Tuple[int, ...]],
         dimension: int,
+        patch_size: Optional[Union[int, Tuple[int, ...]]] = None,
+        patch_border: Optional[Union[int, Tuple[int, ...]]] = None,
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -225,6 +226,10 @@ class XRayDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dimension = dimension
+        patch_size = (patch_size,) * dimension if isinstance(patch_size, int) else patch_size
+        patch_border = (
+            (patch_border,) * dimension if isinstance(patch_border, int) else patch_border
+        )
         self.dataset_kwargs = {
             'hdf5_path': hdf5_path,
             'patch_size': patch_size,

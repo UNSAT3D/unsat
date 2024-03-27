@@ -88,6 +88,7 @@ model:
       kernel_size: 3
       block_depth: 2
       batch_norm: true
+      dimension: 2
   optimizer:
     class_path: torch.optim.Adam
     init_args:
@@ -113,10 +114,7 @@ data:
   seed: 42
   batch_size: 16
   num_workers: 8
-  patch_size:
-  - 512
-  - 512
-  patch_border:
-  - 10
-  - 10
+  dimension: 2
+  patch_size: 512
+  patch_border: 16
 ckpt_path: null
