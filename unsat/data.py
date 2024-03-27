@@ -28,6 +28,7 @@ class DataSelection:
     height_range: Tuple[int, int]
     day_range: Tuple[int, int]
     dimension: int
+    idx_dict: Dict[int, Tuple[str, int, int]] = None
 
     @property
     def num_samples(self):
@@ -51,6 +52,27 @@ class DataSelection:
     @property
     def num_points(self):
         return self.num_samples * self.points_per_sample
+
+    def get_item(self, idx):
+        if not self.idx_dict:
+            self.idx_dict = self.compute_idx_dict()
+        return self.idx_dict[idx]
+
+    def compute_idx_dict(self):
+        """Extract sample, day and height indices from the overall index using modular arithmetic"""
+
+        idx_dict = {}
+        for idx in range(self.num_points):
+            (sample_idx, data_idx) = divmod(idx, self.points_per_sample)
+            sample_name = self.sample_list[sample_idx]
+
+            (day_idx, height_idx) = divmod(data_idx, self.num_heights)
+            day_idx += self.day_range[0]
+            height_idx += self.height_range[0]
+
+            idx_dict[idx] = (sample_name, day_idx, height_idx)
+
+        return idx_dict
 
 
 class XRayDataset(Dataset):
@@ -97,19 +119,13 @@ class XRayDataset(Dataset):
         if not self.hdf5_file:
             self.hdf5_file = h5py.File(self.hdf5_path, 'r')
 
-        # Extract sample, day and height indices from the overall index using modular arithmetic
-        (sample_idx, data_idx) = divmod(idx, self.selection.points_per_sample)
-        sample_name = self.selection.sample_list[sample_idx]
-
-        (day_idx, height_idx) = divmod(data_idx, self.selection.num_heights)
-        day_idx += self.selection.day_range[0]
-        height_idx += self.selection.height_range[0]
-
-        data = self.hdf5_file[sample_name]['data'][day_idx]
-        labels = self.hdf5_file[sample_name]['labels'][day_idx]
+        sample_name, day_idx, height_idx = self.selection.get_item(idx)
         if self.dimension == 2:
-            data = data[height_idx]
-            labels = labels[height_idx]
+            data = self.hdf5_file[sample_name]['data'][day_idx][height_idx]
+            labels = self.hdf5_file[sample_name]['labels'][day_idx][height_idx]
+        if self.dimension == 3:
+            data = self.hdf5_file[sample_name]['data'][day_idx]
+            labels = self.hdf5_file[sample_name]['labels'][day_idx]
 
         # Extract a patch if specified
         init_shape = data.shape
