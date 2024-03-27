@@ -29,6 +29,8 @@ class ClassWeightsCallback(Callback):
         # the missing classes to zero.
         class_weights[class_counts == 0] = 0.0
 
+        class_weights /= class_weights.sum()
+
         # Need to send the class weights to the device to avoid errors
         pl_module.class_weights = class_weights.to(pl_module.device)
 
