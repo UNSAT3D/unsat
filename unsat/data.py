@@ -57,7 +57,7 @@ class DataSelection:
     def get_item(self, idx):
         if not self.idx_dict:
             self.idx_dict = self.compute_idx_dict()
-        return self.idx_dict[idx]
+        return self.idx_dict[idx % self.num_points]
 
     def compute_idx_dict(self):
         """Extract sample, day and height indices from the overall index using modular arithmetic"""
@@ -253,6 +253,7 @@ class XRayDataset(Dataset):
             init_shape = data.shape
             max_starts = [init_shape[i] - self.patch_size[i] for i in range(self.dimension)]
             if self.shuffle:
+                print(max_starts)
                 patch_starts = [np.random.randint(0, max_starts[i]) for i in range(self.dimension)]
             else:
                 patch_starts = [max_starts[i] // 2 for i in range(self.dimension)]
@@ -472,7 +473,6 @@ class XRayDataModule(L.LightningDataModule):
             )
             for name, dataset in datasets.items()
         }
-        fs = self.dataloaders['faults']
 
     def train_dataloader(self):
         return self.dataloaders['train']

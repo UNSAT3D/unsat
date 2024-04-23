@@ -41,13 +41,23 @@ def remove_test_h5(create_test_h5):
 
 def test_dataset(create_test_h5, remove_test_h5):
     selection = DataSelection(
-        sample_list=SAMPLES, height_range=(HEIGHT_START, HEIGHT_END), day_range=(DAY_START, DAY_END)
+        sample_list=SAMPLES,
+        height_range=(HEIGHT_START, HEIGHT_END),
+        day_range=(DAY_START, DAY_END),
+        dimension=2,
     )
-    dataset = XRayDataset(hdf5_path=create_test_h5, data_selection=selection, name='test')
+    dataset = XRayDataset(
+        hdf5_path=create_test_h5,
+        data_selection=selection,
+        name='test',
+        dimension=2,
+        patch_size=None,
+        patch_border=None,
+    )
 
     # test shapes
     assert len(dataset) == len(SAMPLES) * (HEIGHT_END - HEIGHT_START) * (DAY_END - DAY_START)
-    data_sample, label_sample = dataset[-1]
+    data_sample, label_sample, mask_sample = dataset[-1]
     assert data_sample.shape == (CHANNELS, WIDTH, DEPTH)
     assert label_sample.shape == (WIDTH, DEPTH)
 
@@ -82,13 +92,16 @@ def test_dataloaders(create_test_h5, remove_test_h5):
         batch_size=BATCH_SIZE,
         seed=0,
         num_workers=1,
+        dimension=2,
+        class_names=["water", "background", "air", "root", "soil"],
+        input_channels=1,
     )
     data_module.prepare_data()
     dataloaders = data_module.dataloaders
 
     # test shapes
     for name, loader in dataloaders.items():
-        x, y = next(iter(loader))
+        x, y, mask = next(iter(loader))
         assert x.shape == (BATCH_SIZE, CHANNELS, WIDTH, DEPTH)
         assert y.shape == (BATCH_SIZE, WIDTH, DEPTH)
 
@@ -107,7 +120,7 @@ def test_dataloaders(create_test_h5, remove_test_h5):
     elements = {}
     for name, loader in dataloaders.items():
         elements[name] = set()
-        for data, _ in loader:
+        for data, _, _ in loader:
             elements[name].add(data.numpy().tobytes())
 
     for set1, set2 in itertools.product(dataloaders.keys(), repeat=2):
