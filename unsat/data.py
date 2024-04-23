@@ -10,6 +10,7 @@ import lightning as L
 import numpy as np
 import torch
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
+import yaml
 
 
 @dataclass
@@ -73,6 +74,124 @@ class DataSelection:
             idx_dict[idx] = (sample_name, day_idx, height_idx)
 
         return idx_dict
+
+
+class FaultsDataset(Dataset):
+    def __init__(
+        self,
+        hdf5_path: str,
+        faults_path: str,
+        patch_size: Optional[Tuple[int, ...]],
+        dimension: int,
+        train_val_selection: DataSelection,
+    ):
+        self.name = 'faults'
+        self.dimension = dimension
+        self.patch_size = [patch_size] * dimension if isinstance(patch_size, int) else patch_size
+        super().__init__()
+
+        # 1. Convert the yaml file into a list of faults
+        self.sample_names = None
+        self.days = None
+        self.issues = None
+        self.centers = None
+        self.load_faults(faults_path)
+
+        # 2. Create a dataset with the faults
+        self.data, self.labels = self.load_data(hdf5_path)
+
+        # 3. Figure out if the faults are in the training or validation set
+        self.splits = self.check_splits(train_val_selection)
+
+    def load_faults(self, faults_path):
+        with open(faults_path, 'r') as file:
+            faults = yaml.safe_load(file)
+
+        flattened_faults = []
+        for fault in faults:
+            sample = fault['sample']
+            day = fault['day']
+            issues = fault['issues']
+
+            for issue_type in issues:
+                issue = issue_type['issue']
+                entries = issue_type['entries']
+
+                for entry in entries:
+                    center = torch.tensor([entry['z'], entry['x'], entry['y']])
+                    flattened_faults.append((sample, day, center, issue))
+
+        self.sample_names = [fault[0] for fault in flattened_faults]
+        self.days = [fault[1] for fault in flattened_faults]
+        self.centers = [fault[2] for fault in flattened_faults]
+        self.issues = [fault[3] for fault in flattened_faults]
+
+    def load_data(self, hdf5_path):
+        data_list, labels_list = [], []
+        with h5py.File(hdf5_path, 'r') as hdf5_file:
+            for sample, day, center in zip(self.sample_names, self.days, self.centers):
+                data = hdf5_file[sample]['data'][day - 1]
+                labels = hdf5_file[sample]['labels'][day - 1]
+
+                if self.dimension == 2:
+                    z = center[2]
+                    data = data[z]
+                    labels = labels[z]
+
+                init_shape = data.shape
+                # Calculate starting indices such that the patch is centered at (x, y, z)
+                patch_starts = [
+                    max(0, min(coord - size // 2, init_shape[i] - size))
+                    for i, (coord, size) in enumerate(zip(center, self.patch_size))
+                ]
+
+                # Create slice objects for indexing the data and labels arrays
+                slices = tuple(
+                    slice(start, start + size) for start, size in zip(patch_starts, self.patch_size)
+                )
+                data = data[slices]
+                labels = labels[slices]
+
+                data = torch.from_numpy(data).type(torch.float32)
+                labels = torch.from_numpy(labels).type(torch.long)
+
+                data_list.append(data)
+                labels_list.append(labels)
+
+        return data_list, labels_list
+
+    def check_splits(self, selection):
+        """For each fault, check if it is in the training/validation set or the test set."""
+        # TODO: differentiate between training and validation set
+        splits = []
+        for sample, day, center in zip(self.sample_names, self.days, self.centers):
+            split = 'test'
+            z = center[2]
+
+            samples = set(selection.sample_list)
+            days = set(range(selection.day_range[0], selection.day_range[1] + 1))
+            heights = set(range(selection.height_range[0], selection.height_range[1] + 1))
+
+            if sample in samples and day in days and z in heights:
+                split = 'train_val'
+
+            splits.append(split)
+
+        return splits
+
+    def __len__(self):
+        return len(self.issues)
+
+    def __getitem__(self, idx):
+        return (
+            self.data[idx],
+            self.labels[idx],
+            self.sample_names[idx],
+            self.days[idx],
+            self.centers[idx],
+            self.issues[idx],
+            self.splits[idx],
+        )
 
 
 class XRayDataset(Dataset):
@@ -147,8 +266,6 @@ class XRayDataset(Dataset):
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
         mask = self.compute_border_mask(init_shape, patch_starts)
-        # if mask is not None:
-        # mask = torch.from_numpy(mask).type(torch.float32)
 
         data = data.unsqueeze(0)  # Add channel dimension
 
@@ -218,6 +335,7 @@ class XRayDataModule(L.LightningDataModule):
         input_channels: number of input channels
         patch_size: size of the patch to extract
         patch_border: size of the border of a patch to exclude from the loss
+        faults_path: path to yaml file containing examples where labels are known to be wrong
     """
 
     def __init__(
@@ -235,6 +353,7 @@ class XRayDataModule(L.LightningDataModule):
         input_channels: int,
         patch_size: Optional[Union[int, Tuple[int, ...]]] = None,
         patch_border: Optional[Union[int, Tuple[int, ...]]] = None,
+        faults_path: Optional[str] = None,
     ):
         super().__init__()
         self.hdf5_path = hdf5_path
@@ -258,6 +377,7 @@ class XRayDataModule(L.LightningDataModule):
             'patch_border': patch_border,
             'dimension': dimension,
         }
+        self.faults_path = faults_path
 
         self.dataloaders = {}
 
@@ -332,6 +452,15 @@ class XRayDataModule(L.LightningDataModule):
         )
         datasets['test_overlap'].name = 'test_overlap'
 
+        if self.faults_path is not None:
+            datasets['faults'] = FaultsDataset(
+                hdf5_path=self.hdf5_path,
+                faults_path=self.faults_path,
+                patch_size=self.dataset_kwargs['patch_size'],
+                dimension=self.dimension,
+                train_val_selection=train_val_selection,
+            )
+
         # turn into dataloaders
         self.dataloaders = {
             name: DataLoader(
@@ -343,6 +472,7 @@ class XRayDataModule(L.LightningDataModule):
             )
             for name, dataset in datasets.items()
         }
+        fs = self.dataloaders['faults']
 
     def train_dataloader(self):
         return self.dataloaders['train']

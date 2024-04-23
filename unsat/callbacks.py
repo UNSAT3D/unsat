@@ -41,41 +41,76 @@ class CheckFaultsCallback(Callback):
     labels are known to be wrong, and upload plots of these to wandb.
     """
 
-    def __init__(self, faults_path: str):
-        self.faults_path = faults_path
+    def __init__(self, patch_size):
+        super().__init__()
+        self.patch_size = patch_size
 
-        # for each example, store this info
+    def on_fit_start(self, trainer, pl_module):
+        self.faults_dataloader = trainer.datamodule.dataloaders['faults']
+        self.dimension = pl_module.network.dimension
+
         self.samples = []
-        self.centers = []
+        self.days = []
         self.issues = []
-        self.data = []
+        self.centers = []
+        self.splits = []
         self.labels = []
+        self.data = []
 
-        with h5py.File(faults_path, 'r') as f:
+        for data, labels, sample, day, center, issue, split in self.faults_dataloader:
+            self.samples.extend(sample)
+            self.days.extend(day)
+            self.issues.extend(issue)
+            self.splits.extend(split)
 
-            def store_faults(name, obj):
-                if isinstance(obj, h5py.Group) and 'data' in obj and 'labels' in obj:
-                    sample, center = name.rsplit('/', 1)
-                    self.samples.append(sample)
-                    self.centers.append(center)
-                    self.issues.append(obj.attrs['issue'])
-                    self.data.append(obj['data'][()])
-                    self.labels.append(obj['labels'][()])
+            self.centers.append(center)
+            self.labels.append(labels)
+            self.data.append(data)
 
-            f.visititems(store_faults)
+        self.centers = torch.cat(self.centers, dim=0).to('cpu')
+        self.labels = torch.cat(self.labels, dim=0).to('cpu')
+        self.data = torch.cat(self.data, dim=0).to('cpu')
 
-        self.data = torch.from_numpy(np.stack(self.data)).type(torch.float32)
-        self.data = self.data.unsqueeze(1)
-        self.labels = torch.from_numpy(np.stack(self.labels)).type(torch.long)
+        self.data = self.extract_patch(self.data)
+        self.labels = self.extract_patch(self.labels)
+
+    def extract_patch(self, data):
+        """Extract a 2D region of size patch_size around the center."""
+        # NOTE: this assumes that these are already patches with the center in the middle
+        # this will fail to be focussed on the point of interest if either no patch is used,
+        # or the center point is close to the edge of the full image
+
+        spatial_shape = torch.tensor(data.shape[1:])
+
+        # for 3D inputs, extract middle slice in the horizontal direction
+        if self.dimension == 3:
+            data = data[:, spatial_shape[0] // 2]
+            spatial_shape = spatial_shape[1:]
+
+        start = spatial_shape // 2 - self.patch_size // 2
+        end = spatial_shape // 2 + self.patch_size // 2
+        slices = [slice(s, e) for s, e in zip(start, end)]
+
+        data = data[:, slices[0], slices[1]]
+
+        return data
 
     def on_train_epoch_end(self, trainer, pl_module):
-        preds = pl_module.network(self.data.to(pl_module.device)).argmax(dim=1).to('cpu')
+        preds = []
+        for data, *_ in self.faults_dataloader:
+            data = torch.unsqueeze(data, 1).to(pl_module.device)
+            batch_preds = pl_module.network(data).argmax(dim=1)
+            preds.append(batch_preds)
+        preds = torch.cat(preds, dim=0).to('cpu')
+        preds = self.extract_patch(preds)
 
         class_labels = {i: name for i, name in enumerate(pl_module.class_names)}
-        for i, (sample, issue, center) in enumerate(zip(self.samples, self.issues, self.centers)):
+        for i, (sample, day, issue, center, split) in enumerate(
+            zip(self.samples, self.days, self.issues, self.centers, self.splits)
+        ):
             plot = wandb.Image(
-                self.data.squeeze(1)[i].numpy(),
-                caption=f"Sample: {sample}, Issue: {issue} Center: {center}",
+                self.data[i].numpy(),
+                caption=f"Sample: {sample}, Day: {day}, Issue: {issue} Center: {center} ({split})",
                 masks={
                     "predictions": {"mask_data": preds[i].numpy(), "class_labels": class_labels},
                     "labels": {"mask_data": self.labels[i].numpy(), "class_labels": class_labels},
