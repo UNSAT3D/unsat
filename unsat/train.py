@@ -109,12 +109,7 @@ class LightningTrainer(L.LightningModule):
         self.compute_metrics(preds, labels, mask, mode="val_")
 
     def compute_loss(self, preds, labels, mask):
-        per_pixel_losses = F.cross_entropy(
-            preds, labels, weight=self.class_weights, reduction='none'
-        )
-        per_pixel_losses = per_pixel_losses * mask
-        loss = per_pixel_losses.sum() / mask.sum()
-        return loss
+        return _compute_loss(preds, labels, mask, self.class_weights)
 
     def compute_metrics(self, preds, labels, mask, mode):
         # Replace patch border, if set, with -1 in labels.
@@ -160,6 +155,13 @@ class LightningTrainer(L.LightningModule):
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())
         return optimizer
+
+
+def _compute_loss(preds, labels, mask, class_weights):
+    per_pixel_losses = F.cross_entropy(preds, labels, weight=class_weights, reduction='none')
+    per_pixel_losses = per_pixel_losses * mask
+    loss = per_pixel_losses.sum() / mask.sum()
+    return loss
 
 
 class WandbSaveConfigCallback(SaveConfigCallback):
