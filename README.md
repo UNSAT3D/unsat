@@ -1,8 +1,7 @@
 [![Python package](https://github.com/UNSAT3D/unsat/workflows/Install%20and%20test%20Python%20package/badge.svg)](https://github.com/UNSAT3D/unsat/actions/workflows/python.yaml)
 [![codecov](https://codecov.io/gh/UNSAT3D/unsat/graph/badge.svg)](https://codecov.io/gh/UNSAT3D/unsat)
 
-# UNSAT
-![header](https://capsule-render.vercel.app/api?text=capsule_render&animation=fadeInhttps://capsule-render.vercel.app/api?type=egg&height=200&color=0:D98F61,100:BD6629&text=UNSAT&textBg=false&section=header&reversal=false&animation=scaleIn&strokeWidth=3&stroke=95d6a4&desc=AI%20analysis%20tool%20for%20rooted%20soil&fontColor=3D824a&descSize=35&fontAlign=50&fontAlignY=31&descAlignY=50)
+![header](https://capsule-render.vercel.app/api?type=egg&height=200&color=0:D98F61,100:BD6629&text=UNSAT%20🌱&textBg=false&section=header&reversal=false&animation=scaleIn&strokeWidth=3&stroke=95d6a4&desc=AI%20analysis%20tool%20for%20rooted%20soil&fontColor=3D824a&descSize=35&fontAlign=50&fontAlignY=31&descAlignY=50)
 
 ## Installation
 
