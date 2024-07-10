@@ -253,7 +253,7 @@ class XRayDataset(Dataset):
             init_shape = data.shape
             max_starts = [init_shape[i] - self.patch_size[i] for i in range(self.dimension)]
             if self.shuffle:
-                print(max_starts)
+                #print(max_starts)
                 patch_starts = [np.random.randint(0, max_starts[i]) for i in range(self.dimension)]
             else:
                 patch_starts = [max_starts[i] // 2 for i in range(self.dimension)]
