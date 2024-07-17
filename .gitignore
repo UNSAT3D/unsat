@@ -14,3 +14,6 @@ project-unsat/
 wandb/
 logs_slurm/
 profiles/
+
+# Vscode
+.vscode/
