@@ -22,7 +22,7 @@ class UltraLocalModel(nn.Module):
         hidden_sizes: List[int],
         num_classes: int = None,
         input_channels: int = None,
-        activation: str = 'relu',
+        activation: str = "relu",
     ):
         super().__init__()
         self.hidden_sizes = hidden_sizes
@@ -97,9 +97,9 @@ class UNet(nn.Module):
         self.start_channels = start_channels
         self.num_blocks = num_blocks
         self.conv_kwargs = {
-            'batch_norm': batch_norm,
-            'kernel_size': kernel_size,
-            'depth': block_depth,
+            "batch_norm": batch_norm,
+            "kernel_size": kernel_size,
+            "depth": block_depth,
         }
         # If None these will be set in the lightning module
         self.dimension = dimension
@@ -121,10 +121,10 @@ class UNet(nn.Module):
             )
 
         self.upsample = nn.Upsample(
-            scale_factor=2, mode='bilinear' if self.dimension == 2 else 'trilinear'
+            scale_factor=2, mode="bilinear" if self.dimension == 2 else "trilinear"
         )
 
-        self.conv_kwargs['dimension'] = self.dimension
+        self.conv_kwargs["dimension"] = self.dimension
         self.start = ConvBlock(
             in_channels=self.input_channels, out_channels=self.start_channels, **self.conv_kwargs
         )
@@ -184,7 +184,7 @@ class ConvBlock(nn.Module):
 
         for i in range(depth):
             self.conv_layers.append(
-                conv_layer(in_channels, out_channels, kernel_size=kernel_size, padding='same')
+                conv_layer(in_channels, out_channels, kernel_size=kernel_size, padding="same")
             )
             if self.batch_norm:
                 self.bn_layers.append(bn_layer(out_channels))

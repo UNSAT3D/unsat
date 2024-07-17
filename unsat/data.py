@@ -85,7 +85,7 @@ class FaultsDataset(Dataset):
         dimension: int,
         train_val_selection: DataSelection,
     ):
-        self.name = 'faults'
+        self.name = "faults"
         self.dimension = dimension
         self.patch_size = [patch_size] * dimension if isinstance(patch_size, int) else patch_size
         super().__init__()
@@ -104,21 +104,21 @@ class FaultsDataset(Dataset):
         self.splits = self.check_splits(train_val_selection)
 
     def load_faults(self, faults_path):
-        with open(faults_path, 'r') as file:
+        with open(faults_path, "r") as file:
             faults = yaml.safe_load(file)
 
         flattened_faults = []
         for fault in faults:
-            sample = fault['sample']
-            day = fault['day']
-            issues = fault['issues']
+            sample = fault["sample"]
+            day = fault["day"]
+            issues = fault["issues"]
 
             for issue_type in issues:
-                issue = issue_type['issue']
-                entries = issue_type['entries']
+                issue = issue_type["issue"]
+                entries = issue_type["entries"]
 
                 for entry in entries:
-                    center = torch.tensor([entry['z'], entry['x'], entry['y']])
+                    center = torch.tensor([entry["z"], entry["x"], entry["y"]])
                     flattened_faults.append((sample, day, center, issue))
 
         self.sample_names = [fault[0] for fault in flattened_faults]
@@ -128,10 +128,10 @@ class FaultsDataset(Dataset):
 
     def load_data(self, hdf5_path):
         data_list, labels_list = [], []
-        with h5py.File(hdf5_path, 'r') as hdf5_file:
+        with h5py.File(hdf5_path, "r") as hdf5_file:
             for sample, day, center in zip(self.sample_names, self.days, self.centers):
-                data = hdf5_file[sample]['data'][day - 1]
-                labels = hdf5_file[sample]['labels'][day - 1]
+                data = hdf5_file[sample]["data"][day - 1]
+                labels = hdf5_file[sample]["labels"][day - 1]
 
                 if self.dimension == 2:
                     z = center[2]
@@ -165,7 +165,7 @@ class FaultsDataset(Dataset):
         # TODO: differentiate between training and validation set
         splits = []
         for sample, day, center in zip(self.sample_names, self.days, self.centers):
-            split = 'test'
+            split = "test"
             z = center[2]
 
             samples = set(selection.sample_list)
@@ -173,7 +173,7 @@ class FaultsDataset(Dataset):
             heights = set(range(selection.height_range[0], selection.height_range[1] + 1))
 
             if sample in samples and day in days and z in heights:
-                split = 'train_val'
+                split = "train_val"
 
             splits.append(split)
 
@@ -236,15 +236,15 @@ class XRayDataset(Dataset):
         This is used in the dataloader to construct batches.
         """
         if not self.hdf5_file:
-            self.hdf5_file = h5py.File(self.hdf5_path, 'r')
+            self.hdf5_file = h5py.File(self.hdf5_path, "r")
 
         sample_name, day_idx, height_idx = self.selection.get_item(idx)
         if self.dimension == 2:
-            data = self.hdf5_file[sample_name]['data'][day_idx][height_idx]
-            labels = self.hdf5_file[sample_name]['labels'][day_idx][height_idx]
+            data = self.hdf5_file[sample_name]["data"][day_idx][height_idx]
+            labels = self.hdf5_file[sample_name]["labels"][day_idx][height_idx]
         if self.dimension == 3:
-            data = self.hdf5_file[sample_name]['data'][day_idx]
-            labels = self.hdf5_file[sample_name]['labels'][day_idx]
+            data = self.hdf5_file[sample_name]["data"][day_idx]
+            labels = self.hdf5_file[sample_name]["labels"][day_idx]
 
         # Extract a patch if specified
         init_shape = data.shape
@@ -373,10 +373,10 @@ class XRayDataModule(L.LightningDataModule):
             (patch_border,) * dimension if isinstance(patch_border, int) else patch_border
         )
         self.dataset_kwargs = {
-            'hdf5_path': hdf5_path,
-            'patch_size': patch_size,
-            'patch_border': patch_border,
-            'dimension': dimension,
+            "hdf5_path": hdf5_path,
+            "patch_size": patch_size,
+            "patch_border": patch_border,
+            "dimension": dimension,
         }
         self.faults_path = faults_path
 
@@ -391,25 +391,25 @@ class XRayDataModule(L.LightningDataModule):
             dimension=self.dimension,
         )
         train_val_dataset = XRayDataset(
-            data_selection=train_val_selection, name='train_val', **self.dataset_kwargs
+            data_selection=train_val_selection, name="train_val", **self.dataset_kwargs
         )
 
         # split train/val randomly
         num_val_samples = int(self.validation_split * len(train_val_dataset))
         num_train_samples = len(train_val_dataset) - num_val_samples
         generator = torch.Generator().manual_seed(self.seed)
-        datasets['train'], datasets['val'] = random_split(
+        datasets["train"], datasets["val"] = random_split(
             train_val_dataset, [num_train_samples, num_val_samples], generator=generator
         )
-        datasets['train'].name = 'train'
-        datasets['val'].name = 'val'
+        datasets["train"].name = "train"
+        datasets["val"].name = "val"
 
         # find test set by removing train/val samples
-        with h5py.File(self.hdf5_path, 'r') as hdf5_file:
+        with h5py.File(self.hdf5_path, "r") as hdf5_file:
             all_samples = get_all_group_paths(hdf5_file)
             test_samples = list(set(all_samples) - set(self.train_samples))
 
-            total_days = hdf5_file[all_samples[0]]['data'].shape[0]
+            total_days = hdf5_file[all_samples[0]]["data"].shape[0]
             # Note: assumes training days start from 0
             test_day_range = (self.train_day_range[1], total_days)
 
@@ -420,8 +420,8 @@ class XRayDataModule(L.LightningDataModule):
             day_range=test_day_range,
             dimension=self.dimension,
         )
-        datasets['test_strict'] = XRayDataset(
-            data_selection=strict_test_selection, name='test_strict', **self.dataset_kwargs
+        datasets["test_strict"] = XRayDataset(
+            data_selection=strict_test_selection, name="test_strict", **self.dataset_kwargs
         )
 
         # The test set that has overlaps in either samples or days
@@ -433,7 +433,7 @@ class XRayDataModule(L.LightningDataModule):
         )
         overlap_test_dataset_same_days = XRayDataset(
             data_selection=overlap_test_selection_same_days,
-            name='test_overlap_same_days',
+            name="test_overlap_same_days",
             **self.dataset_kwargs,
         )
         overlap_test_selection_same_samples = DataSelection(
@@ -444,20 +444,20 @@ class XRayDataModule(L.LightningDataModule):
         )
         overlap_test_dataset_same_samples = XRayDataset(
             data_selection=overlap_test_selection_same_samples,
-            name='test_overlap_same_samples',
+            name="test_overlap_same_samples",
             **self.dataset_kwargs,
         )
 
-        datasets['test_overlap'] = ConcatDataset(
+        datasets["test_overlap"] = ConcatDataset(
             [overlap_test_dataset_same_days, overlap_test_dataset_same_samples]
         )
-        datasets['test_overlap'].name = 'test_overlap'
+        datasets["test_overlap"].name = "test_overlap"
 
         if self.faults_path is not None:
-            datasets['faults'] = FaultsDataset(
+            datasets["faults"] = FaultsDataset(
                 hdf5_path=self.hdf5_path,
                 faults_path=self.faults_path,
-                patch_size=self.dataset_kwargs['patch_size'],
+                patch_size=self.dataset_kwargs["patch_size"],
                 dimension=self.dimension,
                 train_val_selection=train_val_selection,
             )
@@ -467,7 +467,7 @@ class XRayDataModule(L.LightningDataModule):
             name: DataLoader(
                 dataset,
                 batch_size=self.batch_size,
-                shuffle=(name == 'train'),
+                shuffle=(name == "train"),
                 num_workers=self.num_workers,
                 persistent_workers=True,
             )
@@ -475,16 +475,16 @@ class XRayDataModule(L.LightningDataModule):
         }
 
     def train_dataloader(self):
-        return self.dataloaders['train']
+        return self.dataloaders["train"]
 
     def val_dataloader(self):
-        return self.dataloaders['val']
+        return self.dataloaders["val"]
 
     def test_dataloader(self):
-        return self.dataloaders['test_strict']
+        return self.dataloaders["test_strict"]
 
     def test_overlap_dataloader(self):
-        return self.dataloaders['test_overlap']
+        return self.dataloaders["test_overlap"]
 
 
 def get_all_group_paths(hdf5_file):
