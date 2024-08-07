@@ -22,19 +22,19 @@ VAL_SPLIT = 0.4
 (HEIGHT_START, HEIGHT_END) = (0, 20)
 (DAY_START, DAY_END) = (0, 2)
 
-SAMPLES = ['coarse/loose/04', 'fine/dense/07']
+SAMPLES = ["coarse/loose/04", "fine/dense/07"]
 
 
 @pytest.fixture
 def create_test_h5():
     np.random.seed(0)
-    hdf5_path = 'test_data.h5'
+    hdf5_path = "test_data.h5"
     shape = (DAYS, HEIGHT, WIDTH, DEPTH)
-    with h5py.File(hdf5_path, 'w') as hdf5_file:
+    with h5py.File(hdf5_path, "w") as hdf5_file:
         for sample in SAMPLES:
-            hdf5_file.create_dataset(f'{sample}/data', data=np.random.rand(*shape))
+            hdf5_file.create_dataset(f"{sample}/data", data=np.random.rand(*shape))
             hdf5_file.create_dataset(
-                f'{sample}/labels', data=np.random.randint(0, NUM_CLASSES, size=shape)
+                f"{sample}/labels", data=np.random.randint(0, NUM_CLASSES, size=shape)
             )
     return hdf5_path
 
@@ -46,7 +46,7 @@ def remove_test_h5(create_test_h5):
 
 
 def create_loader(create_test_h5, remove_test_h5, dimension):
-    sample_list = ['coarse/loose/04']
+    sample_list = ["coarse/loose/04"]
     data_module = XRayDataModule(
         hdf5_path=create_test_h5,
         train_samples=sample_list,
@@ -63,7 +63,7 @@ def create_loader(create_test_h5, remove_test_h5, dimension):
         input_channels=1,
     )
     data_module.prepare_data()
-    train_loader = data_module.dataloaders['train']
+    train_loader = data_module.dataloaders["train"]
 
     return train_loader
 

@@ -1,11 +1,9 @@
 import lightning as L
 from lightning.pytorch.cli import OptimizerCallable, SaveConfigCallback
-from lightning.pytorch.loggers import WandbLogger
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
 from torchmetrics.wrappers import ClasswiseWrapper
-
 import wandb
 
 
@@ -47,42 +45,42 @@ class LightningTrainer(L.LightningModule):
 
         metrics_args = dict(task="multiclass", num_classes=self.num_classes, ignore_index=-1)
         self.metrics = torch.nn.ModuleDict()
-        self.metrics['acc'] = torch.nn.ModuleDict(
+        self.metrics["acc"] = torch.nn.ModuleDict(
             {
-                'train_': Accuracy(**metrics_args, average='macro'),
-                'val_': Accuracy(**metrics_args, average='macro'),
+                "train_": Accuracy(**metrics_args, average="macro"),
+                "val_": Accuracy(**metrics_args, average="macro"),
             }
         )
-        self.metrics['f1'] = torch.nn.ModuleDict(
+        self.metrics["f1"] = torch.nn.ModuleDict(
             {
-                'train_': F1Score(**metrics_args, average='macro'),
-                'val_': F1Score(**metrics_args, average='macro'),
+                "train_": F1Score(**metrics_args, average="macro"),
+                "val_": F1Score(**metrics_args, average="macro"),
             }
         )
-        self.metrics['acc_per_class'] = torch.nn.ModuleDict(
+        self.metrics["acc_per_class"] = torch.nn.ModuleDict(
             {
-                'train_': ClasswiseWrapper(
+                "train_": ClasswiseWrapper(
                     Accuracy(**metrics_args, average=None), labels=self.class_names
                 ),
-                'val_': ClasswiseWrapper(
+                "val_": ClasswiseWrapper(
                     Accuracy(**metrics_args, average=None), labels=self.class_names
                 ),
             }
         )
-        self.metrics['f1_per_class'] = torch.nn.ModuleDict(
+        self.metrics["f1_per_class"] = torch.nn.ModuleDict(
             {
-                'train_': ClasswiseWrapper(
+                "train_": ClasswiseWrapper(
                     F1Score(**metrics_args, average=None), labels=self.class_names
                 ),
-                'val_': ClasswiseWrapper(
+                "val_": ClasswiseWrapper(
                     F1Score(**metrics_args, average=None), labels=self.class_names
                 ),
             }
         )
 
-        metrics_args['normalize'] = 'true'
-        self.metrics['confusion'] = torch.nn.ModuleDict(
-            {'train_': ConfusionMatrix(**metrics_args), 'val_': ConfusionMatrix(**metrics_args)}
+        metrics_args["normalize"] = "true"
+        self.metrics["confusion"] = torch.nn.ModuleDict(
+            {"train_": ConfusionMatrix(**metrics_args), "val_": ConfusionMatrix(**metrics_args)}
         )
 
         # These can be overriden to represent class frequencies by using the ClassWeightsCallback
@@ -115,19 +113,19 @@ class LightningTrainer(L.LightningModule):
         # Replace patch border, if set, with -1 in labels.
         masked_labels = torch.where(mask, labels, -1)
 
-        acc_overall = self.metrics['acc'][mode](preds, masked_labels)
-        self.log(f"{mode[:-1]}/acc/all", self.metrics['acc'][mode], on_step=True, on_epoch=True)
+        # acc_overall = self.metrics["acc"][mode](preds, masked_labels)
+        self.log(f"{mode[:-1]}/acc/all", self.metrics["acc"][mode], on_step=True, on_epoch=True)
 
-        self.metrics['f1'][mode](preds, masked_labels)
-        self.log(f"{mode[:-1]}/f1", self.metrics['f1'][mode], on_step=True, on_epoch=True)
+        self.metrics["f1"][mode](preds, masked_labels)
+        self.log(f"{mode[:-1]}/f1", self.metrics["f1"][mode], on_step=True, on_epoch=True)
 
-        accs_per_class = self.metrics['acc_per_class'][mode](preds, masked_labels)
+        accs_per_class = self.metrics["acc_per_class"][mode](preds, masked_labels)
         accs_per_class = {
             f"{mode[:-1]}/acc/{k.split('_')[1]}": v for k, v in accs_per_class.items()
         }
         wandb.log(accs_per_class)
 
-        f1_per_class = self.metrics['f1_per_class'][mode](preds, masked_labels)
+        f1_per_class = self.metrics["f1_per_class"][mode](preds, masked_labels)
         f1_per_class = {f"{mode[:-1]}/f1/{k.split('_')[1]}": v for k, v in f1_per_class.items()}
         wandb.log(f1_per_class)
 
@@ -135,7 +133,7 @@ class LightningTrainer(L.LightningModule):
             self.compute_confusion(preds, masked_labels, mode)
 
     def compute_confusion(self, preds, labels, mode):
-        confusion = self.metrics['confusion'][mode](preds, labels)
+        confusion = self.metrics["confusion"][mode](preds, labels)
 
         data = []
         for i in range(self.num_classes):
@@ -158,7 +156,7 @@ class LightningTrainer(L.LightningModule):
 
 
 def _compute_loss(preds, labels, mask, class_weights):
-    per_pixel_losses = F.cross_entropy(preds, labels, weight=class_weights, reduction='none')
+    per_pixel_losses = F.cross_entropy(preds, labels, weight=class_weights, reduction="none")
     per_pixel_losses = per_pixel_losses * mask
     loss = per_pixel_losses.sum() / mask.sum()
     return loss
@@ -181,15 +179,15 @@ class WandbSaveConfigCallback(SaveConfigCallback):
             overwrite=self.overwrite,
             multifile=self.multifile,
         )
-        logger.experiment.config['lightning_config'] = self.config
+        logger.experiment.config["lightning_config"] = self.config
 
         # save model config separately
-        model_name = self.config.model.network.class_path.split('.')[-1]
-        logger.experiment.config['model'] = model_name
+        model_name = self.config.model.network.class_path.split(".")[-1]
+        logger.experiment.config["model"] = model_name
         for name, val in self.config.model.network.init_args.items():
             logger.experiment.config[name] = val
-        optimizer_name = self.config.model.optimizer.class_path.split('.')[-1]
-        logger.experiment.config['optimizer'] = optimizer_name
-        logger.experiment.config['lr'] = self.config.model.optimizer.init_args.lr
+        optimizer_name = self.config.model.optimizer.class_path.split(".")[-1]
+        logger.experiment.config["optimizer"] = optimizer_name
+        logger.experiment.config["lr"] = self.config.model.optimizer.init_args.lr
         for name, val in self.config.model.optimizer.init_args.items():
             logger.experiment.config[f"opt/{name}"] = val

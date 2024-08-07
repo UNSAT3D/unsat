@@ -1,8 +1,5 @@
-import h5py
 from lightning.pytorch.callbacks import Callback
-import numpy as np
 import torch
-
 import wandb
 
 
@@ -15,7 +12,7 @@ class ClassWeightsCallback(Callback):
     """
 
     def on_fit_start(self, trainer, pl_module):
-        train_dataloader = trainer.datamodule.dataloaders['train']
+        train_dataloader = trainer.datamodule.dataloaders["train"]
         class_counts = torch.zeros(pl_module.num_classes)
         for _, labels, _ in train_dataloader:
             # labels is a high rank tensor with integer entries between 1 and pl_module.num_classes
@@ -46,7 +43,7 @@ class CheckFaultsCallback(Callback):
         self.patch_size = patch_size
 
     def on_fit_start(self, trainer, pl_module):
-        self.faults_dataloader = trainer.datamodule.dataloaders['faults']
+        self.faults_dataloader = trainer.datamodule.dataloaders["faults"]
         self.dimension = pl_module.network.dimension
 
         self.samples = []
@@ -67,9 +64,9 @@ class CheckFaultsCallback(Callback):
             self.labels.append(labels)
             self.data.append(data)
 
-        self.centers = torch.cat(self.centers, dim=0).to('cpu')
-        self.labels = torch.cat(self.labels, dim=0).to('cpu')
-        self.data = torch.cat(self.data, dim=0).to('cpu')
+        self.centers = torch.cat(self.centers, dim=0).to("cpu")
+        self.labels = torch.cat(self.labels, dim=0).to("cpu")
+        self.data = torch.cat(self.data, dim=0).to("cpu")
 
         self.data = self.extract_patch(self.data)
         self.labels = self.extract_patch(self.labels)
@@ -101,7 +98,7 @@ class CheckFaultsCallback(Callback):
             data = torch.unsqueeze(data, 1).to(pl_module.device)
             batch_preds = pl_module.network(data).argmax(dim=1)
             preds.append(batch_preds)
-        preds = torch.cat(preds, dim=0).to('cpu')
+        preds = torch.cat(preds, dim=0).to("cpu")
         preds = self.extract_patch(preds)
 
         class_labels = {i: name for i, name in enumerate(pl_module.class_names)}

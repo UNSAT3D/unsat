@@ -52,7 +52,7 @@ class RectangularSampler(Sampler):
             self.loc[0] : self.loc[0] + self.size[0], self.loc[1] : self.loc[1] + self.size[1]
         ]
 
-    def plot(self, linewidth=1, edgecolor='r', *args, **kwargs):
+    def plot(self, linewidth=1, edgecolor="r", *args, **kwargs):
         _, ax = plt.subplots()
         ax.imshow(self.array, *args, **kwargs)
         # Notice the inversion of indices below.
@@ -65,7 +65,7 @@ class RectangularSampler(Sampler):
             height=self.size[0],
             linewidth=linewidth,
             edgecolor=edgecolor,
-            facecolor='none',
+            facecolor="none",
         )
         ax.add_patch(rect)
 

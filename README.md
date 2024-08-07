@@ -20,7 +20,7 @@ To access weights and biases, run `poetry run wandb login` once, and copy your A
 
 ### Weights and biases
 
-We use weights and biases to track our experiments. 
+We use weights and biases to track our experiments.
 Make sure this is set up first: make an account, find your API key and log in, following the instructions [here](https://docs.wandb.ai/quickstart).
 
 ## Usage
