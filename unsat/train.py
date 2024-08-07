@@ -1,10 +1,10 @@
 import lightning as L
 from lightning.pytorch.cli import OptimizerCallable, SaveConfigCallback
+from models import Decoder, Encoder
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
 from torchmetrics.wrappers import ClasswiseWrapper
-from models import Encoder, Decoder
 import wandb
 
 
@@ -185,7 +185,7 @@ class Autoencoder(L.LightningModule):
 
     def forward(self, x):
         """The forward function takes in an image and returns the reconstructed image."""
-        print(x.shape,flush=True)
+        print(x.shape, flush=True)
         breakpoint()
         z = self.encoder(x)
         x_hat = self.decoder(z)
@@ -203,7 +203,9 @@ class Autoencoder(L.LightningModule):
         optimizer = optim.Adam(self.parameters(), lr=1e-3)
         # Using a scheduler is optional but can be helpful.
         # The scheduler reduces the LR if the validation performance hasn't improved for the last N epochs
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5
+        )
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}
 
     def training_step(self, batch, batch_idx):
