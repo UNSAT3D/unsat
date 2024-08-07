@@ -476,6 +476,9 @@ class XRayDataModule(L.LightningDataModule):
             for name, dataset in datasets.items()
         }
 
+        torch.save(self.dataloaders, 'dataloaders.pth')
+        print("AAAAAAAAAAAAAAAAAAAAAA",flush=True)
+
     def train_dataloader(self):
         return self.dataloaders["train"]
 
