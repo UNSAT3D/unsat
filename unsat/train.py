@@ -4,11 +4,7 @@ import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
 from torchmetrics.wrappers import ClasswiseWrapper
-<<<<<<< Updated upstream
-=======
 from models import Encoder, Decoder
-
->>>>>>> Stashed changes
 import wandb
 
 
