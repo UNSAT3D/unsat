@@ -89,6 +89,7 @@ model:
     init_args:
       lr: 3e-3
 data:
+  patch_size: 512
   hdf5_path: /projects/0/einf3381/UNSAT/data/experimental.h5
   faults_path: faults/faults.yaml
   class_names:
@@ -110,6 +111,6 @@ data:
   validation_split: 0.1
   seed: 42
   batch_size: 2
-  num_workers: 8
+  num_workers: 4
   dimension: 2
 ckpt_path: null

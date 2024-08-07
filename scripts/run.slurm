@@ -13,10 +13,11 @@
 #SBATCH --cpus-per-task=9
 #SBATCH --partition=gpu_mig
 #SBATCH --gpus-per-node=1
-#SBATCH --time=00:10:00
+#SBATCH --time=90:10:00
 #SBATCH --output=logs_slurm/%j.out
 
 module load 2023
 module load Python/3.11.3-GCCcore-12.3.0
+source /home/sciarella1/.virtualenvs/unsat/bin/activate
 
 poetry run python unsat/main.py fit -c "$@"
