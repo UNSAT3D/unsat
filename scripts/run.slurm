@@ -13,7 +13,7 @@
 #SBATCH --cpus-per-task=9
 #SBATCH --partition=gpu_mig
 #SBATCH --gpus-per-node=1
-#SBATCH --time=90:10:00
+#SBATCH --time=10:10:00
 #SBATCH --output=logs_slurm/%j.out
 
 module load 2023
