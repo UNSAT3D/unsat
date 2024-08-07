@@ -266,6 +266,8 @@ class XRayDataset(Dataset):
 
         data = torch.from_numpy(data).type(torch.float32)
         labels = torch.from_numpy(labels).type(torch.long)
+        print(labels)
+        print("\n")
         mask = self.compute_border_mask(init_shape, patch_starts)
 
         data = data.unsqueeze(0)  # Add channel dimension
