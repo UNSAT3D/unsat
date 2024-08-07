@@ -1,6 +1,6 @@
 from data import XRayDataModule
 from lightning.pytorch.cli import LightningCLI
-from train import WandbSaveConfigCallback, Autoencoder
+from train import Autoencoder, WandbSaveConfigCallback
 
 
 class MyLightningCLI(LightningCLI):

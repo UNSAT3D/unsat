@@ -201,7 +201,13 @@ class ConvBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, num_input_channels: int, base_channel_size: int, latent_dim: int, act_fn: object = nn.GELU):
+    def __init__(
+        self,
+        num_input_channels: int,
+        base_channel_size: int,
+        latent_dim: int,
+        act_fn: object = nn.GELU,
+    ):
         """Encoder.
 
         Args:
@@ -213,7 +219,9 @@ class Encoder(nn.Module):
         super().__init__()
         c_hid = base_channel_size
         self.net = nn.Sequential(
-            nn.Conv2d(num_input_channels, c_hid, kernel_size=3, padding=1, stride=2),  # 32x32 => 16x16
+            nn.Conv2d(
+                num_input_channels, c_hid, kernel_size=3, padding=1, stride=2
+            ),  # 32x32 => 16x16
             act_fn(),
             nn.Conv2d(c_hid, c_hid, kernel_size=3, padding=1),
             act_fn(),
@@ -230,9 +238,15 @@ class Encoder(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-        
+
 class Decoder(nn.Module):
-    def __init__(self, num_input_channels: int, base_channel_size: int, latent_dim: int, act_fn: object = nn.GELU):
+    def __init__(
+        self,
+        num_input_channels: int,
+        base_channel_size: int,
+        latent_dim: int,
+        act_fn: object = nn.GELU,
+    ):
         """Decoder.
 
         Args:
@@ -251,7 +265,9 @@ class Decoder(nn.Module):
             act_fn(),
             nn.Conv2d(2 * c_hid, 2 * c_hid, kernel_size=3, padding=1),
             act_fn(),
-            nn.ConvTranspose2d(2 * c_hid, c_hid, kernel_size=3, output_padding=1, padding=1, stride=2),  # 8x8 => 16x16
+            nn.ConvTranspose2d(
+                2 * c_hid, c_hid, kernel_size=3, output_padding=1, padding=1, stride=2
+            ),  # 8x8 => 16x16
             act_fn(),
             nn.Conv2d(c_hid, c_hid, kernel_size=3, padding=1),
             act_fn(),
