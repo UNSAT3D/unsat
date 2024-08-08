@@ -1,7 +1,6 @@
 from data import XRayDataModule
 from lightning.pytorch.cli import LightningCLI
 from train import LightningTrainer, WandbSaveConfigCallback
-from callbacks import ClassWeightsCallback
 
 
 class MyLightningCLI(LightningCLI):
@@ -21,7 +20,6 @@ def cli_main():
     cli = MyLightningCLI(
         model_class=LightningTrainer,
         datamodule_class=XRayDataModule,
-        class_weights_callback=ClassWeightsCallback,
         save_config_callback=WandbSaveConfigCallback,
         save_config_kwargs={"save_to_log_dir": False, "config_filename": "lightning_config.yaml"},
         auto_configure_optimizers=False,
