@@ -90,12 +90,6 @@ model:
     class_path: torch.optim.Adam
     init_args:
       lr: 3e-3
-  lr_scheduler:
-    class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
-    init_args:
-      mode: 'min'
-      factor: 0.1
-      patience: 10
 data:
   hdf5_path: /home/sciarella1/experimental_binarized_copy.h5
   faults_path: faults/faults.yaml
