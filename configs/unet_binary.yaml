@@ -44,7 +44,7 @@ trainer:
   - unsat.callbacks.ClassWeightsCallback
   - class_path: unsat.callbacks.CheckFaultsCallback
     init_args:
-      patch_size: 64
+      patch_size: 512
   fast_dev_run: false
   max_epochs: 1000
   min_epochs: null
@@ -81,15 +81,21 @@ model:
   network:
     class_path: unsat.models.UNet
     init_args:
-      start_channels: 2
-      num_blocks: 3
+      start_channels: 64
+      num_blocks: 4
       kernel_size: 3
-      block_depth: 2
+      block_depth: 3
       batch_norm: true
   optimizer:
     class_path: torch.optim.Adam
     init_args:
       lr: 3e-3
+  lr_scheduler:
+    class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
+    init_args:
+      mode: 'min'
+      factor: 0.1
+      patience: 10
 data:
   hdf5_path: /home/sciarella1/experimental_binarized_copy.h5
   faults_path: faults/faults.yaml
