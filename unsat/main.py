@@ -1,6 +1,7 @@
 from data import XRayDataModule
 from lightning.pytorch.cli import LightningCLI
 from train import LightningTrainer, WandbSaveConfigCallback
+from callbacks import ClassWeightsCallback
 
 
 class MyLightningCLI(LightningCLI):
