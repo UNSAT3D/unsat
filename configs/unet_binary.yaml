@@ -81,7 +81,7 @@ model:
   network:
     class_path: unsat.models.UNet
     init_args:
-      start_channels: 64
+      start_channels: 16
       num_blocks: 4
       kernel_size: 3
       block_depth: 3
@@ -110,7 +110,7 @@ data:
   seed: 42
   batch_size: 4
   num_workers: 2
-  dimension: 2
-  patch_size: 512
+  dimension: 3
+  patch_size: 64
   patch_border: 16
 ckpt_path: null
