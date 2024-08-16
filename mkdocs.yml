@@ -5,7 +5,11 @@ repo_name: Unsat
 
 nav:
   - Home: index.md
-  - Installation: installation.md
+  - H5 data preparation: data.md
+  - Examples:
+    - Configuration: config.md
+    - Visualization: notebooks/visualization.ipynb
+  - U-net 2d vs 3d: 2dvs3d.md
   - Python API:
     - unsat: api/api.md
     - train: api/train.md
@@ -72,6 +76,9 @@ plugins:
           members_order: alphabetical
           merge_init_into_class: yes
           filters: ["!^_"]
+- mkdocs-jupyter:
+    include_source: True
+    include_requirejs: true  # Fix plotly rendering: https://github.com/danielfrg/mkdocs-jupyter/issues/107
 
 watch:
   - unsat/
