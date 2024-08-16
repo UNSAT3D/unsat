@@ -1,6 +1,6 @@
 import lightning as L
 from lightning.pytorch.cli import OptimizerCallable, SaveConfigCallback
-from models import Decoder, Encoder
+from unsat.models import Decoder, Encoder
 import torch
 import torch.nn.functional as F
 from torchmetrics.classification import Accuracy, ConfusionMatrix, F1Score
