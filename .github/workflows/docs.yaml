@@ -27,5 +27,5 @@ jobs:
       - run: |
           python -m pip install poetry
           poetry install --with dev
-          pip install mkdocs mkdocs-material mkdocstrings[python] mkdocs-jupyter
+          pip install mkdocs mkdocs-material mkdocstrings[python] mkdocs-jupyter markdown-include
           python -m mkdocs gh-deploy --force
