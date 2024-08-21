@@ -3,12 +3,6 @@
 
 ![header](https://capsule-render.vercel.app/api?type=egg&height=200&color=0:D98F61,100:BD6629&text=UNSAT%20🌱&textBg=false&section=header&reversal=false&animation=scaleIn&strokeWidth=3&stroke=95d6a4&desc=AI%20analysis%20tool%20for%20rooted%20soil&fontColor=3D824a&descSize=35&fontAlign=50&fontAlignY=31&descAlignY=50)
 
-Sure! Here’s an enhanced and structured version of your README content, tailored for documentation purposes. The content is split into different sections/pages, with a more verbose and structured introduction.
-
----
-
-# UNSAT 🌱 Documentation
-
 Welcome to the **UNSAT** documentation! This guide provides a comprehensive overview of the UNSAT project, an AI analysis tool designed for rooted soil analysis. It will walk you through installation, usage, and other key aspects, ensuring you can leverage UNSAT effectively.
 
 ## Overview
