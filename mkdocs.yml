@@ -6,6 +6,7 @@ repo_name: Unsat
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Usage: usage.md
   - H5 data preparation: data.md
   - Examples:
     - Configuration: config.md
